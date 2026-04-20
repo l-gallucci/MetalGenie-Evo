@@ -1,0 +1,11 @@
+name: fegenie-evo
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.8
+  - hmmer>=3.3
+  - prodigal>=2.6.3
+  - blast>=2.12
+  - pip

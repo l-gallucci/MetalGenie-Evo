@@ -1,0 +1,113 @@
+{
+  "_comment": "FeGenie-Evo operon rules — place this file in your --hmm_dir directory.",
+
+  "report_all_categories": [
+    "metal_resistance-*",
+    "iron_storage"
+  ],
+
+  "rules": [
+    {
+      "_comment": "FLEET electron shuttle: need ≥5 unique genes OR keep non-FLEET co-localisers",
+      "name":       "FLEET",
+      "categories": ["iron_oxidation"],
+      "genes":      ["EetA","EetB","Ndh2","FmnB","FmnA","DmkA","DmkB","PplA"],
+      "rule":       "require_n_of",
+      "min_genes":  5,
+      "on_fail":    "passthrough_non_members"
+    },
+    {
+      "_comment": "Magnetosome island: need ≥5 unique MAM genes",
+      "name":       "MAM",
+      "categories": ["magnetosome_formation"],
+      "genes":      ["MamA","MamB","MamE","MamK","MamP","MamM","MamQ","MamI","MamL","MamO"],
+      "rule":       "require_n_of",
+      "min_genes":  5,
+      "on_fail":    "passthrough_non_members"
+    },
+    {
+      "_comment": "FoxABC (Acidithiobacillus Fe-oxidation): need ≥2 of the three subunits",
+      "name":       "FOXABC",
+      "categories": ["iron_oxidation"],
+      "genes":      ["FoxA","FoxB","FoxC"],
+      "rule":       "require_n_of",
+      "min_genes":  2,
+      "on_fail":    "passthrough_non_members"
+    },
+    {
+      "_comment": "FoxEYZ: FoxE (bc1-complex subunit) is the mandatory anchor gene",
+      "name":       "FOXEYZ",
+      "categories": ["iron_oxidation"],
+      "genes":      ["FoxE","FoxY","FoxZ"],
+      "rule":       "require_anchor",
+      "anchor":     "FoxE",
+      "on_fail":    "passthrough_non_members"
+    },
+    {
+      "_comment": "DFE operon 1 (Desulfosporosinus): need ≥3 of 4 subunits",
+      "name":       "DFE1",
+      "categories": ["iron_reduction","probable_iron_reduction"],
+      "genes":      ["DFE_0448","DFE_0449","DFE_0450","DFE_0451"],
+      "rule":       "require_n_of",
+      "min_genes":  3,
+      "on_fail":    "passthrough_non_members"
+    },
+    {
+      "_comment": "DFE operon 2 (Desulfosporosinus): need ≥3 of 5 subunits",
+      "name":       "DFE2",
+      "categories": ["iron_reduction","probable_iron_reduction"],
+      "genes":      ["DFE_0461","DFE_0462","DFE_0463","DFE_0464","DFE_0465"],
+      "rule":       "require_n_of",
+      "min_genes":  3,
+      "on_fail":    "passthrough_non_members"
+    },
+    {
+      "_comment": "Mtr/Mto disambiguation: re-assigns iron_oxidation vs iron_reduction based on subunit co-presence",
+      "name":       "MtrMto",
+      "categories": ["iron_oxidation","iron_reduction",
+                     "possible_iron_oxidation_and_possible_iron_reduction"],
+      "genes":      ["MtrA","MtrB_TIGR03509","MtrC_TIGR03507","MtoA","CymA"],
+      "rule":       "mtr_disambiguation",
+      "on_fail":    "keep_all"
+    },
+    {
+      "_comment": "Siderophore transport: need ≥2 distinct transport HMMs, OR a lone trusted receptor gene",
+      "name":       "SIDERO_TRANSPORT",
+      "categories": ["iron_aquisition-siderophore_transport_potential",
+                     "iron_aquisition-heme_transport",
+                     "iron_aquisition-siderophore_transport"],
+      "genes":      [],
+      "rule":       "require_n_cat_or_lone_trusted",
+      "min_genes":  2,
+      "trusted_lone": [
+        "FutA1-iron_ABC_transporter_iron-binding-rep",
+        "FutA2-iron_ABC_transporter_iron-binding-rep",
+        "FutC-iron_ABC_transporter_ATPase-rep",
+        "LbtU-LvtA-PiuA-PirA-RhtA",
+        "LbtU-LbtB-legiobactin_receptor",
+        "LbtU_LbtB-legiobactin_receptor_2",
+        "IroC-salmochelin_transport-rep"
+      ],
+      "on_fail":    "drop"
+    },
+    {
+      "_comment": "Siderophore biosynthesis: need ≥3 distinct synthesis HMMs in cluster",
+      "name":       "SIDERO_SYNTH",
+      "categories": ["iron_aquisition-siderophore_synthesis"],
+      "genes":      [],
+      "rule":       "require_n_cat",
+      "min_genes":  3,
+      "on_fail":    "drop"
+    },
+    {
+      "_comment": "Iron/heme transport: need ≥2 distinct transport HMMs in cluster",
+      "name":       "IRON_TRANSPORT",
+      "categories": ["iron_aquisition-iron_transport",
+                     "iron_aquisition-heme_oxygenase"],
+      "genes":      [],
+      "rule":       "require_n_cat",
+      "min_genes":  2,
+      "on_fail":    "drop"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# HMM library models (large, user-provided)
+hmm_library/**/*.hmm
+hmm_library/HMM-bitcutoffs.txt
+hmm_library/FeGenie-map.txt
+hmm_library/hmm_registry.tsv
+!hmm_library/operon_rules.json
+!hmm_library/README.md
+
+# Runtime outputs
+*_out/
+*_output/
+_tblout_cache/
+test_data/test_output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Conda
+.conda/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
