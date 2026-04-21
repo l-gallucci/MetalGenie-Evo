@@ -156,7 +156,7 @@ MetalGenie-Evo is **not distributed through conda or pip** — it is installed b
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/MetalGenie-Evo.git
+git clone https://github.com/l-gallucc/MetalGenie-Evo.git
 cd MetalGenie-Evo
 
 # 2. Create the conda environment with all dependencies
