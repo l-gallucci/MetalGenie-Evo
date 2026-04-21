@@ -1,0 +1,618 @@
+put_FitA_VF	put_FitA_VF
+HemO_Heme_oxygenase_Neisseria_Meningitidis_PDB_1p3t	HemO-family-heme-oxygenase
+HmoB_Heme_oxygenase_Bacillus_subtilis_subsp_spizizenii_str_W23_pdb_4fvc	HmoB-family-heme-oxygenase
+HugZ-ChuZ-heme_oxygenase-rep	HugZ-family-heme-oxygenase
+HupZ_Heme_binding_Group_A_Streptococcus_pdb_5esc	HupZ-family-heme-oxygenase
+Isd-LmHde_Heme_oxygenase_Listeria_monocytogenes_pdb_4kia	Isd-family-heme-oxygenase
+IsdG-heme-oxygenase_fam1-rep	IsdG-family-heme-oxygenase
+IsdG-heme-oxygenase_fam2-rep	IsdG-family-heme-oxygenase
+IsdG-heme-oxygenase_fam3-rep	IsdG-family-heme-oxygenase
+IsdI-heme-oxygenase-rep	IsdI-family-heme-oxygenase
+MhuD_Heme_oxygenase_Mycobacterium_tuberculosis_pdb_4nl5	MhuD-family-heme-oxygenase
+PF01126-HmuO_Heme_oxygenase	HmuO-family-heme-oxygenase
+PF05171-HemS-PhuS-ChuS	HemS-family-heme-degradation
+PF06228_ChuX_HutX	ChuX-family-substrate-binding-protein
+PigA_Heme_oxygenase_Pseudomonas_aeruginosa_PDB_1sk7	PigA-family-heme-oxygenase
+Heme_HasD_ABC_protein_Pseudomonas_fluorescens_BAA88492.1	HasD-family-ATP-binding-protein
+Heme_HasE_membrane_fusion_protein_Pseudomonas_fluorescens_BAA88493.1	HasE-family-membrane-fusion-protein
+Heme_HasF_outer_membrane_protein_Pseudomonas_fluorescens_BAA88494.1	HasF-family-outer-membrane-protein
+HmuV-HatC-ViuC-Hemin_ABC_transporter_ATPase-rep	HmuV-family-ATP-binding-protein
+HutZ-heme_storage-rep	HutZ-family-substrate-binding-protein
+HxuA	HxuA-family-heme-utilziation
+HxuB	HxuB-family-heme-utilziation
+PF04187-Haem_binding_uptake-Tiki_superfamily-ChaN	ChaN-family-substrate-binding-protein
+PF05031-NEAT	NEAT-family-subtrate-binding-protein
+PF06438-Heme_binding_protein_A-HasA_HmuR	HmuR-family-substrate-binding-protein
+PF14064-HmuY_heme_binding	HmuY-substrate-binding-protein
+EfeB	EfeB-family peroxidase
+EfeO-Iron_uptake	EfeO-family-iron-uptake
+FbpA-iron_binding_and_transport-rep	FbpA-family-iron-binding-protein
+FbpB-FutB-iron_permease_fam1-rep	FbpB-FutB-family-iron-permease
+FbpB-iron_permease_fam2-rep	FbpB-family-iron-permease
+FbpC-iron_uptake_ATPase-rep	FbpC-family-ATPase
+FeoE	FeoE-family-iron-efflux
+FutA1-iron_ABC_transporter_iron-binding-rep	FutA1-family-iron-binding-proteins
+FutA2-iron_ABC_transporter_iron-binding-rep	FutA2-family-iron-binding-proteins
+FutC-iron_ABC_transporter_ATPase-rep	FutC-family-ATPase
+Iron_uptake_YfeA_Periplasmic_chelated_iron-binding_protein_Q56952_Yersinia_pestis_180610	YfeA-family-iron-binding-proteins
+Iron_uptake_YfeB_Chelated_iron_transport_system_membrane_protein_Q56953_Yersinia_pestis_180610	YfeB-family-membrane-proteins
+NF041018	NF041018
+NF041019	NF041019
+NF041020	NF041020
+PF02421-FeoB_N	FeoB-family-iron-transporter
+PF03239-Iron_permease_FTR1_EfeU_Fip1_family	EfeU-family-iron-perease
+PF04023-FeoA	FeoA-family-iron-transporter
+PF07664-FeoB_C	FeoB-family-iron-transporter
+PF07670-FeoB_gate_nucleoside_recognition	FeoB-family-iron-transporter
+PF07670_sub-FeoB_gate	FeoB-family-iron-transporter
+nramp	Nramp-family-protein
+zip	Zip-family-zink-and-iron-uptake
+All_seq_Fusarinine	All_seq_Fusarinine
+All_seq_putSID2	All_seq_putSID2
+AsbE_petrobactin_synthesis-rep	AsbE-family-siderophore-synthesis
+DhbA-VibA-VabA-EntA	VabA-family-siderophore-synthesis
+DhbB-EntB-VenB-VibB-VabB	VabB-family-siderophore-synthesis
+DhbC-VibC-VabC	VabC-family-siderophore-synthesis
+DhbE-PchD-VibE-VabE-EntE-IroD-PvdQ-MbtA	VabE-family-siderophore-synthesis
+DhbF-PvdDIJL-VabF	VabF-family-siderophore-synthesis
+F9X9V1_NRPS2_V2	F9X9V1_NRPS2_V2
+Fer3_USTMA_V2	Fer3_USTMA_V2
+FslA	FslA
+FslC	FslC
+IroD-VabH-enterochelin_esterase-rep	VabH-family-siderophore-synthesis
+K00216	K00216
+K00257	K00257
+K00824	K00824
+K01252	K01252
+K01582	K01582
+K01780	K01780
+K01851	K01851
+K01909	K01909
+K04759	K04759
+K04788	K04788
+K04789	K04789
+K04790	K04790
+K04791	K04791
+K04792	K04792
+K04793	K04793
+K05375	K05375
+K07116	K07116
+K07224	K07224
+K07230	K07230
+K10531	K10531
+K11604	K11604
+K12237	K12237
+K12238	K12238
+K12239	K12239
+K12240	K12240
+K12241	K12241
+K12346	K12346
+K13745	K13745
+K14759	K14759
+K15584	K15584
+K15652	K15652
+K15653	K15653
+K15681	K15681
+K15721	K15721
+K16088	K16088
+K16089	K16089
+K16090	K16090
+K16091	K16091
+K19611	K19611
+K19791	K19791
+K19792	K19792
+K21476	K21476
+K21721	K21721
+K21949	K21949
+K21992	K21992
+K22148	K22148
+K22149	K22149
+K22150	K22150
+K22151	K22151
+K22152	K22152
+K22153	K22153
+K23120	K23120
+K23122	K23122
+K23181	K23181
+K23185	K23185
+K23227	K23227
+K23371	K23371
+K23372	K23372
+K23373	K23373
+K23374	K23374
+K23375	K23375
+K23376	K23376
+K23446	K23446
+K23447	K23447
+K23725	K23725
+K24101	K24101
+K24108	K24108
+K24109	K24109
+K24110	K24110
+K24111	K24111
+K24112	K24112
+K25109	K25109
+K25113	K25113
+K25282	K25282
+K25286	K25286
+K25287	K25287
+K25308	K25308
+NF037942	NF037942
+PF04183-IucA_IucC-rhbCF-AcsD-PvsD	PvsD-family-siderophore-synthesis
+PF16525	PF16525
+PRK10003.1	PRK10003.1
+PRK10044.1	PRK10044.1
+Put_copfam2_VF_corr	Put_copfam2_VF_corr
+Put_copfam3_VF_corr	Put_copfam3_VF_corr
+Put_copfam4_VF_corr	Put_copfam4_VF_corr
+Put_rhizoferrin_VF_corr	Put_rhizoferrin_VF_corr
+PvdDIJL-VabF-VibF-EntF-DhbF-MbtB-PchE	VabF-family-siderophore-synthesis
+PvdDIJL-VabF-VibF-EntF-DhbF-MbtB-PchE-AngR_2	VabF-family-siderophore-synthesis
+PvdDIJL-VabF-VibF-EntF-DhbF-MbtBEF-PchE-AngR-PchF	VabF-family-siderophore-synthesis
+PvdQ_pyoverdine_biosynthesis-rep	PvdQ-family-siderophore-synthesis
+PvsA_vibrioferrin_biosynthesis-rep	PvsA-family-siderophore-synthesis
+PvsB-AcsD-IucA-IucC-RhbCF-PvsD	PvsD-family-siderophore-synthesis
+PvsC_vibrioferrin_biosynthesis-rep	PvsC-family-siderophore-synthesis
+PvsD-AcsD-IucA-IucC-RhbCF-PvsB	PvsD-family-siderophore-synthesis
+PvsE-AcsE_vibrioferrin_biosynthesis-rep	PvsE-family-siderophore-synthesis
+Q52US9_FSO1_V2	Q52US9_FSO1_V2
+Sid_AcsB_Achromobactin_siderophore_synthesis_Dickeya_chrysanthemi_AAL14564.1.txt-nr	AcsB-family-siderophore-synthesis
+Sid_AcsF_Achromobactin_siderophore_synthesis_Pseudomonas_syringae_EPF66771.1.txt-nr	AcsF-family-siderophore-synthesis
+Sid_AsbC_Petrobactin_biosynthesis_Bacillus_anthracis_Q81RQ7_180623	AsbC-family-siderophore-synthesis
+Sid_AsbD_Petrobactin_biosynthesis_Bacillus_anthracis_Q81RQ6_180623	AsbD-family-siderophore-synthesis
+Sid_AsbF_Petrobactin_biosynthesis_Bacillus_anthracis_Q81RQ4_180606	AsbF-family-siderophore-synthesis
+Sid_BesA_Bacillibactin_hydrolyze_Bsubtilis_YP_003867459.1_180603	BesA-family-siderophore-synthesis
+Sid_EntD_enterobactin_synthesis_Ecoli	EntD-family-siderophore-synthesis
+Sid_IucB_Escherichia_coli_Q47317	IucB-family-siderophore-synthesis
+Sid_IucD_Escherichia_coli_P11295	IucD-family-siderophore-synthesis
+Sid_MbtC_Mycobactin_biosynthesis_Mycobacterium_tuberculosis_NP_216898.1.txt-nr	MbtC-family-siderophore-synthesis
+Sid_MbtD_Mycobactin_biosynthesis_Mycobacterium_tuberculosis_NP_216897.1.txt-nr	MbtD-family-siderophore-synthesis
+Sid_MbtG_Mycobactin_biosynthesis_Mycobacterium_tuberculosis_NP_216894.1.txt-nr	MbtG-family-siderophore-synthesis
+Sid_MbtH_Mycobactin_biosynthesis_Mycobacterium_tuberculosis_NP_216893.1.txt-nr	MbtH-family-siderophore-synthesis
+Sid_MbtI_Mycobactin_biosynthesis_Mycobacterium_tuberculosis_NC_000962.3.txt-nr	MbtI-family-siderophore-synthesis
+Sid_MbtJ_Mycobactin_biosynthesis_Mycobacterium_tuberculosis_YP_177876.1.txt-nr	MbtJ-family-siderophore-synthesis
+Sid_PchB_pyochelin_biosynthesis_Pseudomonas_aeruginosa_Q51507	PchB-family-siderophore-synthesis
+Sid_PchC_pyochelin_biosynthesis_Pseudomonas_aeruginosa_PA4229	PchC-family-siderophore-synthesis
+Sid_PchG_pyochelin_biosynthesis_Pseudomonas_aeruginosa_PA4224_180623	PchG-family-siderophore-synthesis
+Sid_PchH_pyochelin_biosynthesis_Pseudomonas_aeruginosa_PA4223_180623	PchH-family-siderophore-synthesis
+Sid_PchI_pyochelin_biosynthesis_Pseudomonas_aeruginosa_PA4222_180623	PchI-family-siderophore-synthesis
+Sid_PvdA_Pyoverdine_biosynthesis	PvdA-family-siderophore-synthesis
+Sid_PvdE_Pyoverdine_biosynthesis_Paeruginosa_PA2397_180623	PvdE-family-siderophore-synthesis
+Sid_PvdF_Pyoverdine_biosynthesis_Paeruginosa_PA2396_180623	PvdF-family-siderophore-synthesis
+Sid_PvdH_Pyoverdine_biosynthesis_Pseudomonas_aeruginosa_PA2413_180623	PvdH-family-siderophore-synthesis
+Sid_PvdM_Pyoverdine_biosynthesis_Pseudomonas_fluorescens_PSF113_1846_180623	PvdM-family-siderophore-synthesis
+Sid_PvdN_Pyoverdine_biosynthesis_Paeruginosa_PA2394_180623	PvdN-family-siderophore-synthesis
+Sid_PvdO_Pyoverdine_biosynthesis_Paeruginosa_PA2395_180623	PvdO-family-siderophore-synthesis
+Sid_PvdP_Pyoverdine_biosynthesis_Paeruginosa_PA2392_180623	PvdP-family-siderophore-synthesis
+Sid_RhbA_Rhizobactin_biosynthesis_Rhizobium_meliloti_Q9Z3R2	RhbA-family-siderophore-synthesis
+Sid_RhbB_Rhizobactin_biosynthesis_Rhizobium_meliloti_Q9Z3R1	RhbB-family-siderophore-synthesis
+Sid_RhbD_Rhizobactin_biosynthesis_Rhizobium_meliloti_Q9Z3Q9	RhbD-family-siderophore-synthesis
+Sid_RhbE_Rhizobactin_siderophore_biosynthesis_Rhizobium_meliloti_Q9Z3Q8.txt-nr	RhbE-family-siderophore-synthesis
+Sid_VabD_Vanchrobactin_Biosynthesis_Vibrio_anguillarum_AAW66006.2_180623	VabD-family-siderophore-synthesis
+Sid_VibD_Vibriobactin_siderophore_biosynthesis_Vibrio_cholerae_AAD48884.1.txt-nr	VibD-family-siderophore-synthesis
+Sid_VibH_Vanchrobactin_Biosynthesis_Vibrio_cholerae_AAG00565.1_180623	VibH-family-siderophore-synthesis
+VabA-DhbA-EntA-VibA	VabA-family-siderophore-synthesis
+VabB-EntB-DhbB-VenB-VibB	VabB-family-siderophore-synthesis
+VabC-DhbC-VibC-EntC-AmoA-PchA	VabC-family-siderophore-synthesis
+VabE_Vanchrobactin_biosynthesis-rep	VabE-family-siderophore-synthesis
+VabF_Vanchrobactin_biosynthesis-rep	VabF-family-siderophore-synthesis
+VabG_Vanchrobactin_biosynthesis-rep	VabG-family-siderophore-synthesis
+put_4WR82_SIDC_VF	put_4WR82_SIDC_VF
+put_B4EUG7_VF	put_B4EUG7_VF
+put_B4EUH0_VF	put_B4EUH0_VF
+put_B4EUH1_V2	put_B4EUH1_V2
+put_B4EUH2_VF	put_B4EUH2_VF
+put_B4EUH5_V4	put_B4EUH5_V4
+put_CRL25140_VF	put_CRL25140_VF
+put_D4AU56_V3_corr	put_D4AU56_V3_corr
+put_Ferrirhodin_VF	put_Ferrirhodin_VF
+put_I1RN14_NRPS2_VF	put_I1RN14_NRPS2_VF
+put_NRPS1_VF_corr	put_NRPS1_VF_corr
+put_Q5D6D7_NRPS2_VF	put_Q5D6D7_NRPS2_VF
+put_Q6CSN0_VF	put_Q6CSN0_VF
+put_Q6CSN3_VF	put_Q6CSN3_VF
+put_RhbF_DesD_VF	put_RhbF_DesD_VF
+put_SidA1_V1	put_SidA1_V1
+put_TAFC_VF	put_TAFC_VF
+put_WP_010220689_VF	put_WP_010220689_VF
+put_WP_010220690_VF	put_WP_010220690_VF
+put_WP_010220691_VF	put_WP_010220691_VF
+put_rumB_VF	put_rumB_VF
+FecB-PvuB-vibrioferrin_transport	PvuB-family-substrate-binding-protein
+FecE-PvuE-FhuC-CbrD-FepC-YusV-FpuD-FpuC-PiuA-PirA-FepA-RhtA	PvuE-family-ATP-binding-protein
+FeuB-FhuB-PvuC-CbrB-PvuD-FeuC-CbrC	PvuC-family-permease
+FhuB-FeuB-CbrB-PvuC-iron_ABC_transporter_periplasmic	PvuC-family-permease
+FpuC-FhuC-FpuD-YusV-CbrD-FepC-PvuE-FecE-HatC-ATPase	PvuE-family-permease
+FpuCD-YusV-CbrD-FepC-FepE-PvuE-ABC_transporters_ATPase	PvuE-family-ATP-binding-protein
+FpuD-CbrD-FepC-FhuC-PvuDE-FecE-SstC-ViuC-Siderophore_ABC_transport	PvuD-family-ATP-binding-protein
+FpvK-sid_Pyoverdine_uptake-rep	FpvK-family-hypothetical
+IroC-salmochelin_transport-rep	IroC-family-ATP-binding-protein
+K02012	K02012
+K02014	K02014
+K02016	K02016
+K02361	K02361
+K02362	K02362
+K02363	K02363
+K02364	K02364
+K03894	K03894
+K03895	K03895
+K03896	K03896
+K03897	K03897
+K04778	K04778
+K04780	K04780
+K04781	K04781
+K04782	K04782
+K04783	K04783
+K04784	K04784
+K04785	K04785
+K04786	K04786
+K04787	K04787
+K07243	K07243
+K08197	K08197
+LbtU-LbtB-legiobactin_receptor	LbtU-family-siderophore-receptor
+LbtU-LvtA-PiuA-PirA-RhtA-ViuA	LbtU-family-siderophore receptor
+LbtU_LbtB-legiobactin_receptor_2	LbtU-family-siderophore-receptor
+NF040982	NF040982
+NF040984	NF040984
+NF040985	NF040985
+NF040986	NF040986
+NF040987	NF040987
+PF00593-TonB_dependent_receptor-PiuA-PirA-FepA-RhtA	PirA-family-siderophore-receptor
+PF01032-FecCD-YfhA-FpvE-YfeCD_transport_family	FpvE-family-permease
+PF01497_Peripla_BP_2-HatD-SsstD-PhuT-FhuD-HmuT-YfiY-FpuA-FatB-ViuP-CbrA	HatD-family-substrate-binding-protein
+PF06276-RhbCF-AcsD-IucA-IucC-PvsB-Ferric_iron_reductase_FhuF_like_transporter	IucA-family-iron-reductase
+PF07715_sub-TonB_dependent_siderophore_receptor_plug-PirA-PiuA-FepA-RhtA-LvtA	PirA-family-siderophore-receptor
+PirA-siderophore_receptor-rep	PirA-family-siderophore-receptor
+PiuA-siderophore_receptor-rep	PiuA-family-siderophore-receptor
+PvuB-FecB_vibrioferrin_transport	PvuB-family-substrate-binding-protein
+PvuCD-FhuB-CbrBC-FeuB-CbrC-YfhA	PvuCD-family-permease
+PvuCD-FhuB-CbrBC-FeuBC	PvuCD-family-permease
+PvuE-FecB-vibrioferrin_transport	PvuE-family-substrate-binding-protein
+Sid_EntS_enterobactin_exporter_Ecoli_P24077_180603	EntS-family-siderophore-export
+Sid_FptB_Ferripyochelin_uptake_Pseudomonas_aeruginosa_PA4220_180623	FptB-family-siderophore-transport
+Sid_FptC_Ferripyochelin_uptake_Pseudomonas_aeruginosa_PA4219_180623	FptC-family-siderophore-transport
+Sid_FptX_Ferripyochelin_uptake_Pseudomonas_aeruginosa_PA4218_180623	FptX-family-siderophore-transport
+Sid_FpvC_metal_ion_transport_PA2407_Paeruginosa_PAO1_180602	FpvC-family-siderophore-transport
+Sid_FpvD_ATPase_PA2408_Paeruginosa_PAO1_180602	FpvD-family-siderophore-transport
+Sid_FpvF_metal_ion_transport_PA2410_Paeruginosa_PAO1_180602	FpvF-family-siderophore-transport
+Sid_FpvG_iron_reductase_PA2403_Paeruginosa_PAO1_180602	FpvG-family-siderophore-transport
+Sid_FpvH_iron_release_PA2404_Paeruginosa_PAO1_180602	FpvH-family-siderophore-transport
+Sid_FpvJ_PA2405_Paeruginosa_PAO1_180602	FpvJ-family-siderophore-transport
+Sid_IroB_Shigella_dysenteriae_AAR13266.1_180606	IroB-family-siderophore-transport
+Sid_IroE_Shigella_dysenteriae_AAR13269.1_180606	IroE-family-siderophore-transport
+Sid_LbtC_Legiobactin_PAP2_superfamily_Legionella_oakridgensis_AHE65915.1_180604	MFS-transporter
+Sid_PvdR_Pyoverdine_export_Paeruginosa_PA2389_180623	PvdR-family-sideropore-export
+Sid_PvdT_Pyoverdine_export_Paeruginosa_PA2390_180623	PvdT-family-siderophore-export
+Sid_VabS_Vanchrobactin_Export_Vibrio_anguillarum_CAJ45638.1_180623	VabS-family-siderophore-export
+Sid_ViuB_Vibriobactin_siderophore_transport_utilization_protein_Vibrio_cholerae_A5F660.txt-nr	ViuB-family-siderophore-utilization
+Sid_YqjH_NADPH-dep_ferric_chelate_reductase_enterobactin_Q46871_Escherichia_coli_180606	YqjH-family-iron-reductase
+put_B4EXX6_V2	put_B4EXX6_V2
+put_B4EXY3_V2	put_B4EXY3_V2
+put_FcuA_V3_corr	put_FcuA_V3_corr
+put_FhuA_V3_corr	put_FhuA_V3_corr
+put_FhuE_V2_corr	put_FhuE_V2_corr
+put_FiuA_V3_corr	put_FiuA_V3_corr
+HasB-TonB_paralog_heme_uptake-rep	TonB-family
+PF01618-MotA_TolQ_ExbB_proton_channel_family	ExbB-family
+PF02472-ExbD	ExbD-family
+PF03544_TonB_C	TonB-family
+PF13103_TonB_2	TonB-family
+PF16031_TonB_N	TonB-family
+PF01325-Iron_dependent_repressor-dtxR_family_N	PF01325-Iron_dependent_repressor-dtxR_family_N
+PF01475-Iron_dependent_repressor-fur_family	PF01475-Iron_dependent_repressor-fur_family
+PF02742-Iron_dependent_repressor-dtxR_family_metal_binding_domain	PF02742-Iron_dependent_repressor-dtxR_family_metal_binding_domain
+PF04773_FecR	PF04773_FecR
+PF09012_sub-FeoC_like_transcriptional_regulator	PF09012_sub-FeoC_like_transcriptional_regulator
+Sid_FpvI_regulator_PA2387_Paeruginosa_PAO1_180620	Sid_FpvI_regulator_PA2387_Paeruginosa_PAO1_180620
+Sid_PchR_pyochelin_regulator_Pseudomonas_aeruginosa_PA4227_180623	Sid_PchR_pyochelin_regulator_Pseudomonas_aeruginosa_PA4227_180623
+Sid_PvdS_regulator_Paeruginosa_PA2426_180620	Sid_PvdS_regulator_Paeruginosa_PA2426_180620
+Sid_YqjI_regulator_for_YqjH_P64588_Escherichia_coli_180606	Sid_YqjI_regulator_for_YqjH_P64588_Escherichia_coli_180606
+Cyc1	Cyc1
+Cyc2_repCluster1	Cyc2_repCluster1
+Cyc2_repCluster2	Cyc2_repCluster2
+Cyc2_repCluster3	Cyc2_repCluster3
+FoxA	FoxA
+FoxB	FoxB
+FoxC	FoxC
+FoxE	FoxE
+FoxY	FoxY
+FoxZ	FoxZ
+MtoA	MtoA
+MtrB_TIGR03509	MtrB_TIGR03509
+sulfocyanin	sulfocyanin
+CymA	CymA
+DFE_0448	DFE_0448
+DFE_0449	DFE_0449
+DFE_0450	DFE_0450
+DFE_0451	DFE_0451
+DFE_0461	DFE_0461
+DFE_0462	DFE_0462
+DFE_0463	DFE_0463
+DFE_0464	DFE_0464
+DFE_0465	DFE_0465
+DmkA	DmkA
+DmkB	DmkB
+EetA	EetA
+EetB	EetB
+FmnA	FmnA
+FmnB	FmnB
+GACE_1843	GACE_1843
+GACE_1844	GACE_1844
+GACE_1845	GACE_1845
+GACE_1846	GACE_1846
+GACE_1847	GACE_1847
+MtrA	MtrA
+MtrB_TIGR03509	MtrB_TIGR03509
+MtrC_TIGR03507	MtrC_TIGR03507
+Ndh2	Ndh2
+OmcF	OmcF
+OmcS	OmcS
+OmcZ	OmcZ
+PplA	PplA
+t4ap	t4ap
+Fe_binding_yfeA_1	Iron-binding protein YfeA
+Fe_ferripyoverdine_receptor_1	Ferripyoverdine receptor
+Fe_periplasmic_1	Iron-utilization periplasmic protein
+Fe_permease_efeU_1	Iron permease EfeU
+Fe_pyochelin_1	Fe(3+)-pyochelin receptor
+Fe_superoxide_dismutase_1	Superoxide dismutase [Fe]
+Fe_transport_1	Chelated iron transport system membrane protein YfeB
+Fe_transport_2	Chelated iron transport system membrane protein YfeC
+Fe_transport_3	Chelated iron transport system membrane protein YfeD
+Fe_transport_fbpB_1	Fe(3+)-transport system permease protein FbpB 2
+Fe_transport_fbpC_1	Fe(3+) ions import ATP-binding protein FbpC 2
+Fe_transport_fecD_1	Fe(3+) dicitrate transport system permease protein FecD
+Fe_transport_fecE_1	Fe(3+) dicitrate transport ATP-binding protein FecE
+PF00210-Ferritin_like_domain	PF00210-Ferritin_like_domain
+PF13668_Ferritin_like_domain	PF13668_Ferritin_like_domain
+Transferrin_TbpB_binding_protein_Haemophilus_influenzae_P44971	Transferrin_TbpB_binding_protein_Haemophilus_influenzae_P44971
+MamA	MamA
+MamB	MamB
+MamE	MamE
+MamI	MamI
+MamK	MamK
+MamL	MamL
+MamM	MamM
+MamO	MamO
+MamP	MamP
+MamQ	MamQ
+As_glutaredoxin_1	Glutaredoxin arsenate reductase
+As_lyase_1	Alkylmercury lyase
+As_lyase_2	Alkylmercury lyase
+As_lyase_3	Alkylmercury lyase
+As_methyltransferase_1	Arsenite methyltransferase
+As_methyltransferase_2	Arsenite methyltransferase
+As_methyltransferase_3	Arsenite methyltransferase
+As_methyltransferase_4	Arsenite methyltransferase
+As_oxidase_aioA_1	Arsenite oxidase subunit AioA
+As_oxidase_aioA_2	Arsenite oxidase subunit AioA
+As_oxidase_aioA_3	Arsenite oxidase subunit AioA
+As_oxidase_aioA_4	Arsenite oxidase subunit AioA
+As_oxidase_aioB_1	Arsenite oxidase subunit AioB
+As_oxidase_aioB_2	Arsenite oxidase subunit AioB
+As_oxidase_aioB_3	Arsenite oxidase subunit AioB
+As_oxidase_aioB_4	Arsenite oxidase subunit AioB
+As_pump_1	Arsenical pump membrane protein
+As_pump_2	Arsenical pump membrane protein
+As_pump_3	Arsenical pump membrane protein
+As_pump_4	Arsenical pump membrane protein
+As_pump_5	Arsenical pump-driving ATPase
+As_pump_6	Arsenical pump-driving ATPase
+As_pump_7	Arsenical pump-driving ATPase
+As_pump_8	Arsenical pump-driving ATPase
+As_reductase_1	Arsenate reductase
+As_reductase_2	Arsenate reductase
+As_reductase_3	Arsenate reductase
+As_reductase_4	Arsenate reductase
+As_reductase_5	Arsenate reductase 1
+As_res_Acr3_1	Arsenical-resistance protein Acr3
+As_res_arsB_1	Arsenite resistance protein ArsB
+As_res_arsB_2	Arsenite resistance protein ArsB
+Cr_protein_chrB_1	Protein ChrB
+Cr_transport_1	Chromate transport protein
+Cr_transport_2	Probable chromate transport protein
+Cr_transport_3	Chromate transport protein
+Cr_transport_4	Chromate transport protein
+Cr_transport_5	Chromate transport protein
+Cd_ATPase_1	Probable cadmium-transporting ATPase
+Cd_ATPase_10	Probable cadmium-transporting ATPase
+Cd_ATPase_2	Probable cadmium-transporting ATPase
+Cd_ATPase_3	Probable cadmium-transporting ATPase
+Cd_ATPase_4	Probable cadmium-transporting ATPase
+Cd_ATPase_5	Probable cadmium-transporting ATPase
+Cd_ATPase_6	Probable cadmium-transporting ATPase
+Cd_ATPase_7	Probable cadmium-transporting ATPase
+Cd_ATPase_8	Probable cadmium-transporting ATPase
+Cd_ATPase_9	Probable cadmium-transporting ATPase
+Cd_protein_ygiW_1	Protein YgiW
+Co_methylmutase_1	Cobalt-precorrin-8 methylmutase
+Co_transport_nhlF_1	Cobalt transport protein NhlF
+Zn_ATPase_1	Zinc-transporting ATPase
+Zn_ATPase_2	Zinc-transporting ATPase
+Zn_binding_troA_1	Zinc-binding protein TroA
+Zn_import_znuC_1	Zinc import ATP-binding protein ZnuC
+Zn_transport_gufA_1	Zinc transporter GufA
+Zn_transport_troB_1	Zinc transport system ATP-binding protein TroB
+Zn_transport_troC_1	Zinc transport system membrane protein TroC
+Zn_transport_troD_1	Zinc transport system membrane protein TroD
+Zn_transport_zitB_1	Zinc transporter ZitB
+Zn_transport_zupT_1	Zinc transporter ZupT
+Zn_uptake_znuA_1	High-affinity zinc uptake system protein ZnuA
+Zn_uptake_znuB_1	High-affinity zinc uptake system membrane protein ZnuB
+Zn_uptake_znuB_2	High-affinity zinc uptake system membrane protein ZnuB
+Zn_uptake_znuC_1	High-affinity zinc uptake system ATP-binding protein ZnuC
+Cu_ATPase_1	Probable copper-exporting P-type ATPase
+Cu_ATPase_2	Probable copper-exporting P-type ATPase V
+Cu_ATPase_3	Probable copper-exporting P-type ATPase V
+Cu_ATPase_4	Probable copper-importing P-type ATPase A
+Cu_ATPase_5	Probable copper-transporting ATPase HMA5
+Cu_ATPase_pacS_1	Probable copper-transporting ATPase PacS
+Cu_ATPase_pacS_2	Probable copper-transporting ATPase PacS
+Cu_COP_associated_1	COP-associated protein
+Cu_COP_associated_2	COP-associated protein
+Cu_PF03932_cutC_1	PF03932 family protein CutC
+Cu_binding_pcoE_1	Probable copper-binding protein PcoE
+Cu_chaperone_copZ_1	Copper chaperone CopZ
+Cu_chaperone_copZ_2	Copper chaperone CopZ
+Cu_oxidase_cueO_1	Multicopper oxidase CueO
+Cu_oxidase_cueO_2	Multicopper oxidase CueO
+Cu_oxidase_mco_1	Multicopper oxidase mco
+Cu_oxidase_mmcO_1	Multicopper oxidase MmcO
+Cu_oxidase_mmcO_2	Multicopper oxidase MmcO
+Cu_resistance_A_1	Copper resistance protein A
+Cu_resistance_A_2	Copper resistance protein A
+Cu_resistance_A_3	Copper resistance protein A
+Cu_resistance_A_4	Copper resistance protein A
+Cu_resistance_B_1	Copper resistance protein B
+Cu_resistance_B_2	Copper resistance protein B
+Cu_resistance_B_3	Copper resistance protein B
+Cu_resistance_C_1	Copper resistance protein C
+Cu_resistance_C_2	Copper resistance protein C
+Cu_resistance_C_3	Copper resistance protein C
+Cu_resistance_C_4	Copper resistance protein C
+Cu_resistance_D_1	Copper resistance protein D
+Cu_resistance_D_2	Copper resistance protein D
+Cu_resistance_D_3	Copper resistance protein D
+Cu_resistance_K_1	Copper resistance protein K
+Cu_transport_ATPase_1	Copper-exporting P-type ATPase
+Cu_transport_ATPase_10	Copper-transporting P-type ATPase
+Cu_transport_ATPase_11	Copper-transporting P-type ATPase
+Cu_transport_ATPase_2	Copper-exporting P-type ATPase
+Cu_transport_ATPase_3	Copper-exporting P-type ATPase
+Cu_transport_ATPase_4	Copper-exporting P-type ATPase
+Cu_transport_ATPase_5	Copper-exporting P-type ATPase B
+Cu_transport_ATPase_6	Copper-transporting ATPase
+Cu_transport_ATPase_7	Copper-transporting ATPase
+Cu_transport_ATPase_8	Copper-transporting ATPase 2
+Cu_transport_ATPase_9	Copper-transporting ATPase RAN1
+Cu_transport_mctB_1	Copper transporter MctB
+Cu_transport_ycnJ_1	Copper transport protein YcnJ
+Cu_transport_ycnJ_2	Copper transport protein YcnJ
+Mg_transport_ATPase_1	Magnesium-transporting ATPase, P-type 1
+Mg_transport_corA_1	Magnesium transport protein CorA
+Mn_binding_mntA_1	Manganese-binding lipoprotein MntA
+Mn_transport_ATPase_1	Manganese-exporting P-type ATPase
+Hg_merE_1	Broad mercury transporter MerE
+Hg_reductase_1	Mercuric reductase
+Hg_reductase_10	Mercuric reductase
+Hg_reductase_11	Mercuric reductase
+Hg_reductase_12	Mercuric reductase
+Hg_reductase_2	Mercuric reductase
+Hg_reductase_3	Mercuric reductase
+Hg_reductase_4	Mercuric reductase
+Hg_reductase_5	Mercuric reductase
+Hg_reductase_6	Mercuric reductase
+Hg_reductase_7	Mercuric reductase
+Hg_reductase_8	Mercuric reductase
+Hg_reductase_9	Mercuric reductase
+Hg_transport_1	Mercuric transport protein
+Hg_transport_merC_1	Mercuric transport protein MerC
+Hg_transport_merC_2	Mercuric transport protein MerC
+Hg_transport_merT_1	Mercuric transport protein MerT
+Hg_transport_merT_2	Mercuric transport protein MerT
+Hg_transport_merT_3	Mercuric transport protein MerT
+Hg_transport_merT_4	Mercuric transport protein MerT
+Hg_transport_periplasmic_1	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_10	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_12	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_2	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_3	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_4	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_5	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_6	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_7	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_8	Mercuric transport protein periplasmic component
+Hg_transport_periplasmic_9	Mercuric transport protein periplasmic component
+Mo_binding_modA_1	Molybdate-binding protein ModA
+Mo_binding_molA_1	Molybdate-binding protein MolA
+CdCoZn_ATPase_1	Cadmium, zinc and cobalt-transporting ATPase
+CdCoZn_ATPase_2	Cadmium, zinc and cobalt-transporting ATPase
+CdCoZn_ATPase_3	Cadmium, zinc and cobalt-transporting ATPase
+CdCoZn_antiport_1	Cadmium, cobalt and zinc/H(+)-K(+) antiporter
+CdCoZn_antiport_2	Cadmium, cobalt and zinc/H(+)-K(+) antiporter
+CdCoZn_efflux_czcA_1	Cation efflux system protein CzcA
+CdCoZn_efflux_czcA_2	Cobalt-zinc-cadmium resistance protein CzcA
+CdCoZn_efflux_czcA_3	Cobalt-zinc-cadmium resistance protein CzcA
+CdCoZn_efflux_czcA_4	Cobalt-zinc-cadmium resistance protein CzcA
+CdCoZn_efflux_czcA_5	Cobalt-zinc-cadmium resistance protein CzcA
+CdCoZn_efflux_czcB_1	Cation efflux system protein CzcB
+CdCoZn_efflux_czcB_2	Cobalt-zinc-cadmium resistance protein CzcB
+CdCoZn_efflux_czcB_3	Cobalt-zinc-cadmium resistance protein CzcB
+CdCoZn_efflux_czcB_4	Cobalt-zinc-cadmium resistance protein CzcB
+CdCoZn_efflux_czcB_5	Cobalt-zinc-cadmium resistance protein CzcB
+CdCoZn_efflux_czcC_1	Cobalt-zinc-cadmium resistance protein CzcC
+CdCoZn_efflux_czcD_1	Cation efflux system protein CzcD
+CdCoZn_efflux_czcD_2	Cation efflux system protein CzcD
+CoMg_protein_apaG_1	Protein ApaG
+CuAg_cusA_1	Cation efflux system protein CusA
+CuAg_cusB_1	Cation efflux system protein CusB
+CuAg_cusC_1	Cation efflux system protein CusC
+CuAg_cusF_1	Cation efflux system protein CusF
+CuNi_ATPase_1	Probable cobalt/nickel-exporting P-type ATPase
+MgCo_corC_1	Magnesium and cobalt efflux protein CorC
+NiCoCd_resistance_nccA_1	Nickel-cobalt-cadmium resistance protein NccA
+NiCoCd_resistance_nccA_2	Nickel-cobalt-cadmium resistance protein NccA
+NiCoCd_resistance_nccB_1	Nickel-cobalt-cadmium resistance protein NccB
+NiCoCd_resistance_nccB_2	Nickel-cobalt-cadmium resistance protein NccB
+NiCoCd_resistance_nccC_1	Nickel-cobalt-cadmium resistance protein NccC
+NiCoCd_resistance_nccN_1	Nickel-cobalt-cadmium resistance protein NccN
+NiCo_efflux_1	Putative nickel/cobalt efflux system HI_1248
+NiCo_efflux_rcnA_1	Nickel/cobalt efflux system RcnA
+NiCo_efflux_rcnA_2	Nickel/cobalt efflux system RcnA
+NiCo_efflux_rcnA_3	Nickel/cobalt efflux system RcnA
+NiCo_efflux_rcnA_4	Nickel/cobalt efflux system RcnA
+NiCo_efflux_rcnA_5	Nickel/cobalt efflux system RcnA
+NiCo_resistance_cnrA_1	Nickel and cobalt resistance protein CnrA
+NiCo_resistance_cnrA_2	Nickel and cobalt resistance protein CnrA
+NiCo_resistance_cnrB_1	Nickel and cobalt resistance protein CnrB
+NiCo_resistance_cnrC_1	Nickel and cobalt resistance protein CnrC
+NiCo_resistance_cnrC_2	Nickel and cobalt resistance protein CnrC
+NiCo_resistance_cnrC_3	Nickel and cobalt resistance protein CnrC
+ZnCdPb_ATPase_1	Zinc/cadmium/lead-transporting P-type ATPase
+ZnCdPb_ATPase_2	Zinc/cadmium/lead-transporting P-type ATPase
+ZnCdPb_ATPase_3	Zinc/cadmium/lead-transporting P-type ATPase
+Ni_Import_nikE_1	Nickel import ATP-binding protein NikE
+Ni_import_nikD_1	Nickel import ATP-binding protein NikD
+Ni_periplasmic_1	Nickel-binding periplasmic protein
+Ni_permease_nikB_1	Nickel transport system permease protein NikB
+Ni_permease_nikC_1	Nickel transport system permease protein NikC
+Ni_protein_hupE_1	Protein HupE
+Ni_protein_hupE_2	Protein HupE
+Ni_transport_nixA_1	High-affinity nickel-transport protein NixA
+As_res_Acr3_2	Arsenical-resistance protein Acr3
+Cation_ATPase_1	Probable cation-transporting ATPase G
+Cation_efflux_fieF_1	Cation-efflux pump FieF
+Cation_symport_actP_1	Cation/acetate symporter ActP
+Cation_tolerance_cutA_1	Divalent-cation tolerance protein CutA
+Cation_tolerance_cutA_2	Divalent-cation tolerance protein CutA
+Cation_transport_mntH_1	Divalent metal cation transporter MntH
+Cation_transport_mntH_2	Divalent metal cation transporter MntH
+FMN_reductase_arsH_1	NADPH-dependent FMN reductase ArsH
+FMN_reductase_arsH_2	NADPH-dependent FMN reductase ArsH
+FMN_reductase_arsH_3	NADPH-dependent FMN reductase ArsH
+FMN_reductase_arsH_4	NADPH-dependent FMN reductase ArsH
+FMN_reductase_arsH_5	NADPH-dependent FMN reductase ArsH
+Metal_binding_zinT_1	Metal-binding protein ZinT
+Multidrug_efflux_yfmO_1	Multidrug efflux protein YfmO
+Multidrug_efflux_yfmO_2	Multidrug efflux protein YfmO
+Multidrug_resistance_mdtA_1	Multidrug resistance protein MdtA
+Multidrug_resistance_mdtB_1	Multidrug resistance protein MdtB
+Multidrug_resistance_mdtC_1	Multidrug resistance protein MdtC
+Quinone_reductase_arsH_1	NADPH-dependent quinone reductase ArsH
+Ag_ATPase_1	Silver exporting P-type ATPase
+Ag_efflux_silA_1	Putative cation efflux system protein SilA
+Ag_lipoprotein_silC_1	Probable outer membrane lipoprotein SilC
+Ag_membrane_silB_1	Putative membrane fusion protein SilB
+Te_protein_klaB_1	Protein KlaB
+Te_protein_klaC_1	Protein KlaC
+Te_protein_klaC_2	Protein KlaC
+Te_resistance_terA_1	Tellurium resistance protein TerA
+Te_resistance_terA_2	Tellurium resistance protein TerA
+Te_resistance_terB_1	Tellurium resistance protein TerB
+Te_resistance_terB_2	Tellurium resistance protein TerB
+Te_resistance_terB_3	Tellurium resistance protein TerB
+Te_resistance_terB_4	Tellurium resistance protein TerB
+Te_resistance_terC_1	Tellurium resistance protein TerC
+Te_resistance_terD_1	Tellurium resistance protein TerD
+Te_resistance_terE_1	Tellurium resistance protein TerE
+Te_resistance_terZ_1	Tellurium resistance protein TerZ

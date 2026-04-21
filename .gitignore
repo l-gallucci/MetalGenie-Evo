@@ -1,8 +1,4 @@
 # HMM library models (large, user-provided)
-hmm_library/**/*.hmm
-hmm_library/HMM-bitcutoffs.txt
-hmm_library/FeGenie-map.txt
-hmm_library/hmm_registry.tsv
 !hmm_library/operon_rules.json
 !hmm_library/README.md
 
