@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FeGenie-Evo  –  Modernised FeGenie-compatible HMM annotation pipeline
+MetalGenie-Evo  –  Modernised FeGenie-compatible HMM annotation pipeline
 ======================================================================
 Improvements over the original FeGenie and the first reimplementation:
 
@@ -49,9 +49,9 @@ HMM library structure expected
 
 Outputs (in --out/)
 -------------------
-  FeGenie-Evo-summary.csv
-  FeGenie-Evo-geneSummary-clusters.csv   (FeGenie-R-script compatible)
-  FeGenie-Evo-heatmap-data.csv
+  MetalGenie-Evo-summary.csv
+  MetalGenie-Evo-geneSummary-clusters.csv   (FeGenie-R-script compatible)
+  MetalGenie-Evo-heatmap-data.csv
 """
 
 import argparse
@@ -814,7 +814,7 @@ def write_heatmap(path, final_rows, all_genomes, norm_dict=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="FeGenie-Evo",
+        prog="MetalGenie-Evo",
         description="FeGenie-compatible HMM annotation with improved clustering,"
                     " parallelism, and configurable operon rules",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -829,7 +829,7 @@ def main():
                              "coordinate-based clustering). Optional.")
     parser.add_argument("--hmm_dir",   required=True,
                         help="HMM library directory (FeGenie iron/ structure)")
-    parser.add_argument("--out",       default="fegenie_evo_out",
+    parser.add_argument("--out",       default="metalgenie_evo_out",
                         help="Output directory")
     # Clustering
     parser.add_argument("--max_gap",   type=int, default=5,
@@ -989,9 +989,9 @@ def main():
     all_genomes = sorted(f.name for f in faa_files)
 
     # ── Write outputs ─────────────────────────────────────────────────────────
-    summary_path  = out_dir / "FeGenie-Evo-summary.csv"
-    clusters_path = out_dir / "FeGenie-Evo-geneSummary-clusters.csv"
-    heatmap_path  = out_dir / "FeGenie-Evo-heatmap-data.csv"
+    summary_path  = out_dir / "MetalGenie-Evo-summary.csv"
+    clusters_path = out_dir / "MetalGenie-Evo-geneSummary-clusters.csv"
+    heatmap_path  = out_dir / "MetalGenie-Evo-heatmap-data.csv"
 
     print(f"[INFO] Writing {summary_path.name}…")
     write_summary(str(summary_path), final_rows)
@@ -1015,7 +1015,7 @@ def main():
         cat_counts[r["cat"]] += 1
 
     print(f"\n{'─'*60}")
-    print(f"  FeGenie-Evo  –  run complete")
+    print(f"  MetalGenie-Evo  –  run complete")
     print(f"  {len(final_rows)} ORFs reported across "
           f"{n_genomes_hit}/{len(faa_files)} genomes")
     print(f"\n  Hits per category:")

@@ -1,4 +1,4 @@
-name: fegenie-evo
+name: metalgenie-evo
 channels:
   - conda-forge
   - bioconda

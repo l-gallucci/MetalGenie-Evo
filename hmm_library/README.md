@@ -1,7 +1,7 @@
 # Note on HMM Library Population
 
 The `hmm_library/` directory is intentionally empty in the repository.
-You need to populate it once before running FeGenie-Evo.
+You need to populate it once before running MetalGenie-Evo.
 
 ## Option 1 – FeGenie HMMs only (iron genes)
 

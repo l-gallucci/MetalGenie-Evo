@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# FeGenie-Evo setup script
+# MetalGenie-Evo setup script
 # Installs dependencies via conda/mamba if available, otherwise checks for system tools.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONDA_ENV="fegenie-evo"
+CONDA_ENV="metalgenie-evo"
 
 echo "========================================"
-echo "  FeGenie-Evo  –  setup"
+echo "  MetalGenie-Evo  –  setup"
 echo "========================================"
 
 # ── Check for conda/mamba ───────────────────────────────────────────────────
@@ -32,7 +32,7 @@ if [[ -n "$CONDA_CMD" ]]; then
     echo ""
     echo "[OK] Environment '$CONDA_ENV' ready."
     echo "     Activate with:  conda activate $CONDA_ENV"
-    echo "     Then run:       FeGenie-Evo.py --help"
+    echo "     Then run:       MetalGenie-Evo.py --help"
 else
     # Manual dependency check
     MISSING=()
@@ -52,12 +52,12 @@ else
 fi
 
 # ── Make main script executable ─────────────────────────────────────────────
-chmod +x "$SCRIPT_DIR/FeGenie-Evo.py"
+chmod +x "$SCRIPT_DIR/MetalGenie-Evo.py"
 chmod +x "$SCRIPT_DIR/scripts/build_hmm_library.py"
 
 # ── Optionally add to PATH ───────────────────────────────────────────────────
 echo ""
-read -r -p "Add FeGenie-Evo.py to PATH in ~/.bashrc? [y/N] " response
+read -r -p "Add MetalGenie-Evo.py to PATH in ~/.bashrc? [y/N] " response
 if [[ "$response" =~ ^[Yy]$ ]]; then
     echo "export PATH=\"\$PATH:$SCRIPT_DIR\"" >> "$HOME/.bashrc"
     echo "[OK] Added to ~/.bashrc. Run 'source ~/.bashrc' to apply."

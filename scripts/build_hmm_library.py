@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-build_hmm_library.py  –  Build / update a FeGenie-Evo HMM library
+build_hmm_library.py  –  Build / update a MetalGenie-Evo HMM library
 ==================================================================
-Merges HMM profiles from multiple sources into the FeGenie-Evo
+Merges HMM profiles from multiple sources into the MetalGenie-Evo
 library format (one sub-directory per functional category) and handles:
 
   • FeGenie iron/ directory (original FeGenie HMM set)
@@ -410,13 +410,55 @@ def write_library(out_dir, accepted, registry):
     print(f"[INFO] Wrote {len(accepted)} models to {out_dir}/")
 
 
+def load_flat_tsv(tsv_path):
+    """
+    Load a reviewed assignment TSV (output of assign_flat_hmms.py).
+    Skips rows with category == REVIEW_NEEDED or empty category.
+    """
+    models = []
+    skipped = 0
+    with open(tsv_path) as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        for row in reader:
+            cat = row.get("category", "").strip()
+            if not cat or cat == "REVIEW_NEEDED":
+                skipped += 1
+                continue
+            stem = row.get("stem", "").strip()
+            hmm_file = row.get("hmm_file", "").strip()
+            if not hmm_file or not os.path.isfile(hmm_file):
+                print(f"  [WARN] File not found for {stem}: {hmm_file}", file=sys.stderr)
+                skipped += 1
+                continue
+            try:
+                cutoff = float(row.get("cutoff", 0) or 0)
+            except ValueError:
+                cutoff = 0.0
+            models.append({
+                "name":      row.get("name", stem),
+                "acc":       "",
+                "desc":      row.get("desc", ""),
+                "nseq":      0,
+                "ga_seq":    None, "tc_seq": None,
+                "category":  cat,
+                "library":   "flat_extra",
+                "hmm_file":  hmm_file,
+                "gene_name": row.get("gene_name", stem),
+                "stem":      stem,
+                "cutoff":    cutoff,
+            })
+    if skipped:
+        print(f"  [WARN] {skipped} rows skipped (REVIEW_NEEDED or missing file)")
+    return models
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
     p = argparse.ArgumentParser(
-        description="Build/update a FeGenie-Evo HMM library",
+        description="Build/update a MetalGenie-Evo HMM library",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--fegenie_dir",    help="FeGenie hmms/iron/ directory")
@@ -425,6 +467,10 @@ def main():
     p.add_argument("--methmmdb",       help="MetHMMDB concatenated .hmm file")
     p.add_argument("--methmmdb_meta",
                    help="MetHMMDB metadata TSV (columns: name, category, gene_name)")
+    p.add_argument("--flat_dirs",
+                   help="TSV produced by assign_flat_hmms.py (after manual review). "
+                        "Columns: stem, hmm_file, name, desc, category, confidence, "
+                        "gene_name, cutoff, notes")
     p.add_argument("--out_dir",        required=True, help="Output library directory")
     p.add_argument("--update",         action="store_true",
                    help="Update mode: add/replace models, keep existing ones")
@@ -459,6 +505,12 @@ def main():
         mc = load_methmmdb_concat(args.methmmdb, meta_table)
         print(f"       {len(mc)} models")
         all_models.extend(mc)
+
+    if args.flat_dirs:
+        print(f"[INFO] Loading reviewed flat HMMs from {args.flat_dirs}…")
+        flat = load_flat_tsv(args.flat_dirs)
+        print(f"       {len(flat)} models")
+        all_models.extend(flat)
 
     if not all_models:
         sys.exit("[ERROR] No models loaded.")
