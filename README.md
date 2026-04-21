@@ -33,6 +33,7 @@ If you use MetalGenie-Evo in your research, please cite all of the following tha
 - [Output files](#output-files)
 - [Operon rules](#operon-rules)
 - [Extending the HMM library](#extending-the-hmm-library)
+- [Visualisation](#visualisation)
 - [Differences from FeGenie at a glance](#differences-from-fegenie-at-a-glance)
 
 ---
@@ -522,6 +523,94 @@ To add individual HMMs manually without rebuilding:
 2. Add bitscore cutoffs to `hmm_library/HMM-bitcutoffs.txt` (`stem<tab>cutoff`).
 3. Add readable gene names to `hmm_library/MetalGenie-map.txt` (`stem<tab>gene_name`).
 4. Optionally add operon rules to `hmm_library/operon_rules.json`.
+
+---
+
+## Visualisation
+
+MetalGenie-Evo includes `scripts/plot_heatmap.R`, a standalone R script that generates publication-ready heatmaps from the tool's CSV outputs.
+
+### Features
+
+- Hierarchical clustering of both rows (categories) and columns (genomes) using Ward's method
+- Automatically adapts colour scale and axis labels to the input type:
+  - gene-count CSV → white → orange → red, log(n+1) transform for large ranges
+  - coverage CSV → white → blue gradient, linear scale
+- Static output (PDF and/or PNG) via `pheatmap`
+- Interactive HTML output via `plotly` — zoomable, with per-cell hover tooltips and integrated PNG export
+
+### Required R packages
+
+Install once into the conda environment:
+
+```bash
+conda install -c conda-forge r-pheatmap r-plotly r-htmlwidgets                               r-optparse r-rcolorbrewer r-scales
+```
+
+Or from within R:
+```r
+install.packages(c("pheatmap","plotly","htmlwidgets",
+                   "optparse","RColorBrewer","scales"))
+```
+
+### Usage
+
+```bash
+# Process entire results directory (all *heatmap*.csv files)
+Rscript scripts/plot_heatmap.R --input results/
+
+# Single file, both output types
+Rscript scripts/plot_heatmap.R \
+    --input results/MetalGenie-Evo-heatmap-data.csv \
+    --type  both \
+    --format both
+
+# Static PDF only, output to a figures/ directory
+Rscript scripts/plot_heatmap.R \
+    --input  results/ \
+    --type   static \
+    --format pdf \
+    --out    figures/
+
+# Interactive HTML only, filter out low-count categories
+Rscript scripts/plot_heatmap.R \
+    --input     results/ \
+    --type      interactive \
+    --min_count 1
+
+# Custom dimensions, disable column clustering
+Rscript scripts/plot_heatmap.R \
+    --input          results/ \
+    --width          16 \
+    --height         10 \
+    --no_cluster_cols
+```
+
+### Arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--input` | *(required)* | CSV file or MetalGenie-Evo output directory |
+| `--type` | `both` | `static` \| `interactive` \| `both` |
+| `--format` | `both` | Static format: `pdf` \| `png` \| `both` |
+| `--out` | same as input | Output directory for plots |
+| `--width` | auto | Plot width in inches |
+| `--height` | auto | Plot height in inches |
+| `--min_count` | `0` | Minimum value to include a category row |
+| `--no_cluster_rows` | off | Disable hierarchical clustering of categories |
+| `--no_cluster_cols` | off | Disable hierarchical clustering of genomes |
+
+### Output files
+
+For each input CSV (e.g. `MetalGenie-Evo-heatmap-data.csv`), the script produces:
+
+| File | Description |
+|---|---|
+| `MetalGenie-Evo-heatmap-data.pdf` | Static heatmap, print-ready |
+| `MetalGenie-Evo-heatmap-data.png` | Static heatmap, for presentations |
+| `MetalGenie-Evo-heatmap-data.html` | Interactive heatmap, self-contained |
+
+If a `MetalGenie-Evo-coverage-heatmap.csv` is also present, it is processed automatically with the same options but a blue colour scale.
 
 ---
 
