@@ -168,9 +168,9 @@ mamba env create -f environment.yml
 # 3. Activate
 conda activate metalgenie-evo
 
-# 4. Make executable and verify
-chmod +x MetalGenie-Evo.py
-MetalGenie-Evo.py --help
+# 4. execute setup.sh in the MetalGenie-Evo folder
+bash ./setup.sh
+MetalGenie-Evo --help #now you can run MetalGenie-Evo from everywhere
 ```
 
 The `environment.yml` in this repository pins the exact versions of all dependencies. The environment is named `metalgenie-evo` automatically.
@@ -184,7 +184,7 @@ If you already have an active environment with HMMER and Prodigal:
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-chmod +x MetalGenie-Evo.py
+chmod +x MetalGenie-Evo
 
 # Install any missing tools into your current environment
 conda install -c bioconda hmmer>=3.3 prodigal>=2.6.3 samtools>=1.10
@@ -197,7 +197,7 @@ conda install -c bioconda hmmer>=3.3 prodigal>=2.6.3 samtools>=1.10
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-chmod +x MetalGenie-Evo.py
+chmod +x MetalGenie-Evo
 
 # Verify dependencies are in PATH
 python3 --version    # must be ≥ 3.8
@@ -208,9 +208,9 @@ samtools --version   # must be ≥ 1.10  (optional)
 
 ---
 
-### Add to PATH (optional)
+### Add to PATH (optional) if not following
 
-To call `MetalGenie-Evo.py` from any directory without the full path:
+To call `MetalGenie-Evo` from any directory without the full path:
 
 ```bash
 echo "export PATH=\"\$PATH:$(pwd)\"" >> ~/.bashrc
@@ -243,7 +243,7 @@ No setup step is required. Clone the repo and run.
 If you already have Prodigal `.faa` files:
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir  orfs/ \
     --hmm_dir  hmm_library/ \
     --out      results/
@@ -264,7 +264,7 @@ for f in genomes/*.fna; do
 done
 
 # Run MetalGenie-Evo
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir    orfs/ \
     --gff_dir    gffs/ \
     --hmm_dir    hmm_library/ \
@@ -276,7 +276,7 @@ MetalGenie-Evo.py \
 ### Strand-aware clustering
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir      orfs/ \
     --gff_dir      gffs/ \
     --hmm_dir      hmm_library/ \
@@ -288,7 +288,7 @@ MetalGenie-Evo.py \
 ### Normalised heatmap output
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
@@ -298,7 +298,7 @@ MetalGenie-Evo.py \
 ### Report all hits (skip operon filtering)
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir    orfs/ \
     --hmm_dir    hmm_library/ \
     --out        results/ \
@@ -312,7 +312,7 @@ When you have BAM files from read mapping, MetalGenie-Evo can produce an additio
 
 **Single BAM file** (same BAM for all genomes/bins):
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
@@ -325,7 +325,7 @@ MetalGenie-Evo.py \
 echo -e "bin_001.faa\tmapping/bin_001.sorted.bam" > bam_map.tsv
 echo -e "bin_002.faa\tmapping/bin_002.sorted.bam" >> bam_map.tsv
 
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
@@ -335,14 +335,14 @@ MetalGenie-Evo.py \
 **Pre-computed depth files** (from MetaBAT2, BBMap, or samtools):
 ```bash
 # If you already ran jgi_summarize_bam_contig_depths or BBMap pileup.sh:
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
     --depth   mapping/contigs.depth       # single file
 
 # Or per-genome:
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir  orfs/ \
     --hmm_dir  hmm_library/ \
     --out      results/ \
