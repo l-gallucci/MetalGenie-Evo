@@ -71,6 +71,17 @@ All sources are merged, deduplicated, and tracked in a versioned registry (`hmm_
 
 MetalGenie-Evo separates concerns into focused, testable functions and uses `pathlib` and `subprocess` throughout. Output CSV formats are identical to FeGenie's, so existing R plotting scripts (`DotPlot.R`, `dendro-heatmap.R`) work without modification.
 
+### 7 — Metagenome-specific features
+
+When working with metagenomic assemblies rather than isolated genomes, MetalGenie-Evo provides:
+
+- **Integrated Prodigal** (`--fna_dir --meta`) — runs ORF prediction internally in metagenomic mode, producing `.faa` and `.gff` automatically
+- **Contig length filter** (`--min_contig_len`) — skips ORFs on contigs shorter than a given threshold, reducing noise from incomplete assemblies
+- **Relaxed operon thresholds** (`--relaxed_operons`) — halves minimum gene-count requirements for clusters on short contigs where operons may be fragmented across assembly breaks
+- **TPM-normalised coverage** (`--norm_coverage`) — normalises the coverage heatmap to TPM using contig lengths, enabling cross-sample comparisons
+- **Contig column in all outputs** — every output file includes the source contig, enabling downstream linkage to binning or taxonomic classification results
+- **Long-format output** (`MetalGenie-Evo-results-long.tsv`) — tidy TSV with one row per ORF, no cluster separators, no sequences; directly loadable in R (`read_tsv()`) or pandas
+
 ---
 
 ## How it works
@@ -127,10 +138,7 @@ All FeGenie operon rules are preserved exactly:
 
 ## Installation
 
-MetalGenie-Evo is **not distributed through conda or pip** — it is installed by cloning this repository and using conda (or mamba) to install its dependencies. The distinction is:
-
-- `conda` installs the **dependencies** (HMMER, Prodigal, samtools, Python)
-- `git clone` installs **MetalGenie-Evo itself** (a Python script, no compilation needed)
+MetalGenie-Evo is installed by cloning this repository and creating the conda environment. The `environment.yml` handles everything — it installs all external dependencies (HMMER, Prodigal, samtools) **and** registers the `MetalGenie-Evo` command via pip in one step.
 
 ### Dependencies
 
@@ -159,21 +167,20 @@ MetalGenie-Evo is **not distributed through conda or pip** — it is installed b
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
 
-# 2. Create the conda environment with all dependencies
-#    (mamba is faster than conda for solving; use either)
+# 2. Create the conda environment — installs all dependencies
+#    AND registers the MetalGenie-Evo command automatically
 conda env create -f environment.yml
-# or:
+# or faster:
 mamba env create -f environment.yml
 
 # 3. Activate
 conda activate metalgenie-evo
 
-# 4. Make executable and verify
-chmod +x MetalGenie-Evo.py
-MetalGenie-Evo.py --help
+# 4. Verify
+MetalGenie-Evo --help
 ```
 
-The `environment.yml` in this repository pins the exact versions of all dependencies. The environment is named `metalgenie-evo` automatically.
+The environment is named `metalgenie-evo` automatically. No `chmod`, no PATH editing, no `setup.sh` required.
 
 ---
 
@@ -184,39 +191,35 @@ If you already have an active environment with HMMER and Prodigal:
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-chmod +x MetalGenie-Evo.py
 
-# Install any missing tools into your current environment
+# Install any missing tools
 conda install -c bioconda hmmer>=3.3 prodigal>=2.6.3 samtools>=1.10
+
+# Register the MetalGenie-Evo command
+pip install -e .
+
+MetalGenie-Evo --help
 ```
 
 ---
 
-### Option 3 — No conda (manual)
+### Option 3 — Manual (no conda)
 
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-chmod +x MetalGenie-Evo.py
 
 # Verify dependencies are in PATH
-python3 --version    # must be ≥ 3.8
-hmmsearch -h         # must be ≥ 3.3
-prodigal -v          # must be ≥ 2.6.3
-samtools --version   # must be ≥ 1.10  (optional)
+python3 --version    # must be >= 3.8
+hmmsearch -h         # must be >= 3.3
+prodigal -v          # must be >= 2.6.3
+samtools --version   # must be >= 1.10  (optional)
+
+# Register the command
+pip install -e .
+
+MetalGenie-Evo --help
 ```
-
----
-
-### Add to PATH (optional)
-
-To call `MetalGenie-Evo.py` from any directory without the full path:
-
-```bash
-echo "export PATH=\"\$PATH:$(pwd)\"" >> ~/.bashrc
-source ~/.bashrc
-```
-
 
 
 ## HMM library
@@ -243,7 +246,7 @@ No setup step is required. Clone the repo and run.
 If you already have Prodigal `.faa` files:
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir  orfs/ \
     --hmm_dir  hmm_library/ \
     --out      results/
@@ -264,7 +267,7 @@ for f in genomes/*.fna; do
 done
 
 # Run MetalGenie-Evo
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir    orfs/ \
     --gff_dir    gffs/ \
     --hmm_dir    hmm_library/ \
@@ -276,7 +279,7 @@ MetalGenie-Evo.py \
 ### Strand-aware clustering
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir      orfs/ \
     --gff_dir      gffs/ \
     --hmm_dir      hmm_library/ \
@@ -288,7 +291,7 @@ MetalGenie-Evo.py \
 ### Normalised heatmap output
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
@@ -298,7 +301,7 @@ MetalGenie-Evo.py \
 ### Report all hits (skip operon filtering)
 
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir    orfs/ \
     --hmm_dir    hmm_library/ \
     --out        results/ \
@@ -312,7 +315,7 @@ When you have BAM files from read mapping, MetalGenie-Evo can produce an additio
 
 **Single BAM file** (same BAM for all genomes/bins):
 ```bash
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
@@ -325,7 +328,7 @@ MetalGenie-Evo.py \
 echo -e "bin_001.faa\tmapping/bin_001.sorted.bam" > bam_map.tsv
 echo -e "bin_002.faa\tmapping/bin_002.sorted.bam" >> bam_map.tsv
 
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
@@ -335,14 +338,14 @@ MetalGenie-Evo.py \
 **Pre-computed depth files** (from MetaBAT2, BBMap, or samtools):
 ```bash
 # If you already ran jgi_summarize_bam_contig_depths or BBMap pileup.sh:
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir orfs/ \
     --hmm_dir hmm_library/ \
     --out     results/ \
     --depth   mapping/contigs.depth       # single file
 
 # Or per-genome:
-MetalGenie-Evo.py \
+MetalGenie-Evo \
     --faa_dir  orfs/ \
     --hmm_dir  hmm_library/ \
     --out      results/ \
@@ -374,6 +377,14 @@ The coverage heatmap is written as `MetalGenie-Evo-coverage-heatmap.csv` alongsi
 | `--bams` | — | TSV file: `genome_label<TAB>bam_path` for per-genome BAM files |
 | `--depth` | — | Pre-computed depth file (jgi / BBMap / samtools format) |
 | `--depths` | — | TSV file: `genome_label<TAB>depth_path` for per-genome depth files |
+| `--norm_coverage` | off | Normalise coverage heatmap to TPM |
+| **Metagenome options** | | |
+| `--fna_dir` | — | Directory of nucleotide assemblies (mutually exclusive with `--faa_dir`); Prodigal run internally |
+| `--fna_ext` | `fna` | Extension of assembly files |
+| `--meta` | off | Prodigal metagenomic mode (`-p meta`) |
+| `--min_contig_len` | `0` | Skip ORFs on contigs shorter than this (bp); 0 = no filter |
+| `--relaxed_operons` | off | Halve operon min-gene thresholds for short contigs |
+| `--relaxed_threshold` | `10000` | Contig length (bp) below which thresholds are relaxed |
 
 ---
 
@@ -389,6 +400,7 @@ One row per reported ORF. Cluster separators (`#,#,…`) mark operon boundaries.
 |---|---|
 | `category` | Functional category (e.g. `iron_reduction`) |
 | `genome/assembly` | Source genome filename |
+| `contig` | Source contig identifier |
 | `orf` | ORF identifier |
 | `gene` | Readable gene name (from `MetalGenie-map.txt`) |
 | `bitscore` | hmmsearch bitscore |
@@ -399,12 +411,21 @@ One row per reported ORF. Cluster separators (`#,#,…`) mark operon boundaries.
 
 ### `MetalGenie-Evo-geneSummary-clusters.csv`
 
-Compact version compatible with FeGenie's R plotting scripts (`DotPlot.R`, `dendro-heatmap.R`).
+Compact version compatible with FeGenie's R plotting scripts (`DotPlot.R`, `dendro-heatmap.R`). Includes `contig` column.
 
 ### `MetalGenie-Evo-heatmap-data.csv`
 
 Gene-count matrix: rows = functional categories, columns = genomes.
 With `--norm`: values are `(gene_count / total_orfs) × 1000`.
+
+### `MetalGenie-Evo-results-long.tsv`
+
+Tidy long-format TSV — one row per ORF, no cluster separators, no protein sequences. Includes `contig` and `contig_len` columns. Directly loadable in R or pandas for comparative analyses.
+
+### `MetalGenie-Evo-coverage-heatmap.csv`
+
+Coverage-based matrix (only written when `--bam`, `--bams`, `--depth`, or `--depths` is provided).
+With `--norm_coverage`: values are TPM-normalised using contig lengths.
 
 ---
 
@@ -518,6 +539,13 @@ To add individual HMMs manually without rebuilding:
 | HMM deduplication | No | **Yes (ACC + NAME + Jaccard, cross-source only)** |
 | Versioned HMM registry | No | **Yes (hmm_registry.tsv)** |
 | Normalised heatmap | `--norm` | **`--norm`** (same) |
+| Coverage heatmap | `--bam` | **`--bam` / `--bams` / `--depth` / `--depths`** |
+| Coverage normalisation | No | **TPM (`--norm_coverage`)** |
+| Integrated Prodigal | No | **Yes (`--fna_dir --meta`)** |
+| Contig length filter | No | **Yes (`--min_contig_len`)** |
+| Relaxed operon thresholds | No | **Yes (`--relaxed_operons`)** |
+| Contig column in outputs | No | **Yes** |
+| Long-format output | No | **Yes (`-results-long.tsv`)** |
 | R script compatibility | Yes | **Yes (same CSV format)** |
 | FeGenie filter rules | All | **All (exact port)** |
 
