@@ -7,5 +7,5 @@ dependencies:
   - python>=3.8
   - hmmer>=3.3
   - prodigal>=2.6.3
-  - blast>=2.12
+  - samtools>=1.10   # required only for --bam; skip if using --depth pre-computed files
   - pip

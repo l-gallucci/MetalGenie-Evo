@@ -127,32 +127,97 @@ All FeGenie operon rules are preserved exactly:
 
 ## Installation
 
-### With conda (recommended)
+MetalGenie-Evo is **not distributed through conda or pip** — it is installed by cloning this repository and using conda (or mamba) to install its dependencies. The distinction is:
+
+- `conda` installs the **dependencies** (HMMER, Prodigal, samtools, Python)
+- `git clone` installs **MetalGenie-Evo itself** (a Python script, no compilation needed)
+
+### Dependencies
+
+**Core pipeline (required):**
+
+| Tool | Min version | Purpose |
+|---|---|---|
+| Python | 3.8 | Runtime |
+| HMMER (`hmmsearch`) | 3.3 | HMM search |
+| Prodigal | 2.6.3 | ORF prediction from nucleotide input |
+
+**Coverage heatmap (optional, only needed for `--bam`):**
+
+| Tool | Min version | Purpose |
+|---|---|---|
+| samtools | 1.10 | Per-contig coverage from BAM files |
+
+> If you already have pre-computed depth files from MetaBAT2 (`jgi_summarize_bam_contig_depths`) or BBMap (`pileup.sh`), use `--depth` instead of `--bam` — samtools is not needed.
+
+---
+
+### Option 1 — Conda / Mamba (recommended)
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-bash setup.sh
+
+# 2. Create the conda environment with all dependencies
+#    (mamba is faster than conda for solving; use either)
+conda env create -f environment.yml
+# or:
+mamba env create -f environment.yml
+
+# 3. Activate
 conda activate metalgenie-evo
+
+# 4. Make executable and verify
+chmod +x MetalGenie-Evo.py
+MetalGenie-Evo.py --help
 ```
 
-### Manual
+The `environment.yml` in this repository pins the exact versions of all dependencies. The environment is named `metalgenie-evo` automatically.
 
-Ensure the following tools are in your `$PATH`:
+---
 
-| Tool | Version | Purpose |
-|---|---|---|
-| Python | ≥ 3.8 | Core runtime |
-| HMMER (`hmmsearch`) | ≥ 3.3 | HMM search |
-| Prodigal | ≥ 2.6.3 | ORF prediction (if providing nucleotide input) |
+### Option 2 — Add to an existing conda environment
+
+If you already have an active environment with HMMER and Prodigal:
 
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-chmod +x MetalGenie-Evo.py scripts/curate_hmm_library.py
+chmod +x MetalGenie-Evo.py
+
+# Install any missing tools into your current environment
+conda install -c bioconda hmmer>=3.3 prodigal>=2.6.3 samtools>=1.10
 ```
 
 ---
+
+### Option 3 — No conda (manual)
+
+```bash
+git clone https://github.com/your-username/MetalGenie-Evo.git
+cd MetalGenie-Evo
+chmod +x MetalGenie-Evo.py
+
+# Verify dependencies are in PATH
+python3 --version    # must be ≥ 3.8
+hmmsearch -h         # must be ≥ 3.3
+prodigal -v          # must be ≥ 2.6.3
+samtools --version   # must be ≥ 1.10  (optional)
+```
+
+---
+
+### Add to PATH (optional)
+
+To call `MetalGenie-Evo.py` from any directory without the full path:
+
+```bash
+echo "export PATH=\"\$PATH:$(pwd)\"" >> ~/.bashrc
+source ~/.bashrc
+```
+
+
 
 ## HMM library
 
@@ -240,6 +305,54 @@ MetalGenie-Evo.py \
     --all_results
 ```
 
+
+### Coverage-based heatmap (BAM files)
+
+When you have BAM files from read mapping, MetalGenie-Evo can produce an additional heatmap where values represent read coverage instead of gene counts.
+
+**Single BAM file** (same BAM for all genomes/bins):
+```bash
+MetalGenie-Evo.py \
+    --faa_dir orfs/ \
+    --hmm_dir hmm_library/ \
+    --out     results/ \
+    --bam     mapping/sample.sorted.bam
+```
+
+**Per-genome BAM files** (different BAM per genome):
+```bash
+# Prepare a TSV: genome_label<TAB>bam_path
+echo -e "bin_001.faa\tmapping/bin_001.sorted.bam" > bam_map.tsv
+echo -e "bin_002.faa\tmapping/bin_002.sorted.bam" >> bam_map.tsv
+
+MetalGenie-Evo.py \
+    --faa_dir orfs/ \
+    --hmm_dir hmm_library/ \
+    --out     results/ \
+    --bams    bam_map.tsv
+```
+
+**Pre-computed depth files** (from MetaBAT2, BBMap, or samtools):
+```bash
+# If you already ran jgi_summarize_bam_contig_depths or BBMap pileup.sh:
+MetalGenie-Evo.py \
+    --faa_dir orfs/ \
+    --hmm_dir hmm_library/ \
+    --out     results/ \
+    --depth   mapping/contigs.depth       # single file
+
+# Or per-genome:
+MetalGenie-Evo.py \
+    --faa_dir  orfs/ \
+    --hmm_dir  hmm_library/ \
+    --out      results/ \
+    --depths   depth_map.tsv              # genome_label<TAB>depth_path
+```
+
+Accepted depth file formats: `jgi_summarize_bam_contig_depths`, `samtools coverage -H`, BBMap `pileup.sh`, or a plain two-column `contig<TAB>depth` file.
+
+The coverage heatmap is written as `MetalGenie-Evo-coverage-heatmap.csv` alongside the standard gene-count heatmap.
+
 ### Full argument reference
 
 | Argument | Default | Description |
@@ -257,6 +370,10 @@ MetalGenie-Evo.py \
 | `--all_results` | off | Skip all operon-context filters |
 | `--norm` | off | Normalise heatmap counts per total ORFs |
 | `--keep_tblout` | off | Keep cached `.tblout` files after run |
+| `--bam` | — | Single sorted BAM file for coverage heatmap (requires samtools ≥ 1.10) |
+| `--bams` | — | TSV file: `genome_label<TAB>bam_path` for per-genome BAM files |
+| `--depth` | — | Pre-computed depth file (jgi / BBMap / samtools format) |
+| `--depths` | — | TSV file: `genome_label<TAB>depth_path` for per-genome depth files |
 
 ---
 

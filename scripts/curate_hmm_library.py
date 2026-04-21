@@ -1025,10 +1025,11 @@ def write_library(out_dir, accepted, dup_log, log_path=None):
                 w.writerow(row)
         print(f"[INFO] Deduplication log → {dup_path}")
 
-    # Copy operon_rules.json if exists alongside this script
+    # Copy operon_rules.json if it exists in the repo but is not already in out_dir
     rules_src = Path(__file__).parent.parent / "hmm_library" / "operon_rules.json"
-    if rules_src.exists():
-        shutil.copy2(rules_src, out_dir / "operon_rules.json")
+    rules_dst = out_dir / "operon_rules.json"
+    if rules_src.exists() and rules_src.resolve() != rules_dst.resolve():
+        shutil.copy2(rules_src, rules_dst)
 
     return len(registry_rows)
 
@@ -1225,8 +1226,19 @@ python scripts/curate_hmm_library.py --verify hmm_library/
                   f"they will be skipped.", file=sys.stderr)
 
         accepted, dup_log = deduplicate(all_models, args.jaccard_thr)
-        accepted, cutoff_stats = apply_cutoffs(accepted, fegenie_cutoffs, extra_cutoffs)
-        _print_cutoff_stats(cutoff_stats)
+
+        # In --from_report mode the cutoff column in the TSV already contains
+        # the correct values from the original run. Only re-apply if the user
+        # provided extra --cutoff_tsv files or --fegenie_dir.
+        if fegenie_cutoffs or extra_cutoffs:
+            accepted, cutoff_stats = apply_cutoffs(accepted, fegenie_cutoffs, extra_cutoffs)
+            _print_cutoff_stats(cutoff_stats)
+        else:
+            # Report the cutoff coverage directly from the loaded TSV
+            n_with = sum(1 for m in accepted if float(m.get("cutoff") or 0) > 0)
+            n_without = len(accepted) - n_with
+            print(f"[INFO] Bitscore cutoffs from report TSV: "
+                  f"{n_with} set, {n_without} missing (→ E-value < 0.1 only)")
         n = write_library(args.out_dir, accepted, dup_log)
         print(f"[DONE] {n} HMMs written to {args.out_dir}/")
         return
