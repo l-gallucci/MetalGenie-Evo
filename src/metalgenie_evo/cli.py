@@ -120,40 +120,64 @@ def load_operon_rules(hmm_dir):
     return [],_REPORT_ALL_PATTERNS,False
 
 # ── Prodigal ──────────────────────────────────────────────────────────────────
-def run_prodigal(fna_files, out_dir, meta_mode=False, threads=1):
-    prodigal_dir=out_dir/"_prodigal"
-    faa_dir=prodigal_dir/"faa"; gff_dir=prodigal_dir/"gff"
-    faa_dir.mkdir(parents=True,exist_ok=True); gff_dir.mkdir(exist_ok=True)
+def _prodigal_job(args_tuple):
+    """Top-level function (picklable) for ProcessPoolExecutor."""
+    fna_path, faa_out, gff_out, meta_mode = args_tuple
+    stem = Path(fna_path).stem
+    if Path(faa_out).exists() and Path(gff_out).exists():
+        return stem, True, ""
+    cmd = ["prodigal", "-i", str(fna_path),
+           "-a", faa_out, "-f", "gff", "-o", gff_out, "-q"]
+    if meta_mode:
+        cmd += ["-p", "meta"]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return stem, r.returncode == 0, r.stderr if r.returncode else ""
 
-    def _call(fna_path):
-        stem=Path(fna_path).stem
-        faa_out=str(faa_dir/f"{stem}.faa"); gff_out=str(gff_dir/f"{stem}.gff")
-        if Path(faa_out).exists() and Path(gff_out).exists():
-            return stem,True,""
-        cmd=["prodigal","-i",str(fna_path),"-a",faa_out,"-f","gff","-o",gff_out,"-q"]
-        if meta_mode: cmd+=["-p","meta"]
-        r=subprocess.run(cmd,capture_output=True,text=True)
-        return stem,r.returncode==0,r.stderr if r.returncode else ""
+
+def run_prodigal(fna_files, out_dir, meta_mode=False, threads=1):
+    prodigal_dir = out_dir / "_prodigal"
+    faa_dir = prodigal_dir / "faa"
+    gff_dir = prodigal_dir / "gff"
+    faa_dir.mkdir(parents=True, exist_ok=True)
+    gff_dir.mkdir(exist_ok=True)
+
+    # Build job tuples (all picklable — no closures)
+    jobs = [
+        (str(fna), str(faa_dir / f"{fna.stem}.faa"),
+         str(gff_dir / f"{fna.stem}.gff"), meta_mode)
+        for fna in fna_files
+    ]
 
     print(f"[INFO] Running Prodigal on {len(fna_files)} assemblies "
           f"({'meta' if meta_mode else 'single'} mode)…")
-    n_workers=min(threads,len(fna_files))
-    if n_workers>1:
+
+    n_workers = min(threads, len(fna_files))
+    if n_workers > 1:
         with ProcessPoolExecutor(max_workers=n_workers) as pool:
-            futures={pool.submit(_call,f):f for f in fna_files}
-            done=errors=0
+            futures = {pool.submit(_prodigal_job, j): j for j in jobs}
+            done = errors = 0
             for fut in as_completed(futures):
-                done+=1; stem,ok,err=fut.result()
-                if not ok: errors+=1; print(f"\n  [WARN] Prodigal failed {stem}: {err[:80]}",file=sys.stderr)
-                sys.stdout.write(f"\r  {done}/{len(fna_files)}  ({errors} errors)  "); sys.stdout.flush()
+                done += 1
+                stem, ok, err = fut.result()
+                if not ok:
+                    errors += 1
+                    print(f"\n  [WARN] Prodigal failed {stem}: {err[:80]}",
+                          file=sys.stderr)
+                sys.stdout.write(
+                    f"\r  {done}/{len(fna_files)}  ({errors} errors)  ")
+                sys.stdout.flush()
         print()
     else:
-        for i,fna in enumerate(fna_files,1):
-            stem,ok,err=_call(fna)
-            sys.stdout.write(f"\r  {i}/{len(fna_files)}  "); sys.stdout.flush()
-            if not ok: print(f"\n  [WARN] Prodigal failed {stem}: {err[:80]}",file=sys.stderr)
+        for i, job in enumerate(jobs, 1):
+            stem, ok, err = _prodigal_job(job)
+            sys.stdout.write(f"\r  {i}/{len(fna_files)}  ")
+            sys.stdout.flush()
+            if not ok:
+                print(f"\n  [WARN] Prodigal failed {stem}: {err[:80]}",
+                      file=sys.stderr)
         print()
-    return faa_dir,gff_dir
+
+    return faa_dir, gff_dir
 
 # ── Contig lengths ─────────────────────────────────────────────────────────────
 def get_contig_lengths_from_gff(gff_path):
