@@ -172,7 +172,7 @@ MetalGenie-Evo is installed by cloning this repository and creating the conda en
 ### Option 1 — Conda / Mamba (recommended)
 
 ```bash
-git clone https://github.com/your-username/MetalGenie-Evo.git
+git clone https://github.com/l-gallucci/MetalGenie-Evo.git
 cd MetalGenie-Evo
 
 conda env create -f environment.yml   # or: mamba env create -f environment.yml
@@ -190,7 +190,7 @@ No `chmod`, no PATH editing, no `setup.sh` required.
 ### Option 2 — Add to an existing conda environment
 
 ```bash
-git clone https://github.com/your-username/MetalGenie-Evo.git
+git clone https://github.com/l-gallucci/MetalGenie-Evo.git
 cd MetalGenie-Evo
 conda install -c bioconda hmmer>=3.3 prodigal>=2.6.3 samtools>=1.10
 pip install -e .
@@ -202,7 +202,7 @@ MetalGenie-Evo --help
 ### Option 3 — Manual (no conda)
 
 ```bash
-git clone https://github.com/your-username/MetalGenie-Evo.git
+git clone https://github.com/l-gallucci/MetalGenie-Evo.git
 cd MetalGenie-Evo
 pip install -e .
 MetalGenie-Evo --help
