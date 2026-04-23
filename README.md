@@ -178,6 +178,8 @@ cd MetalGenie-Evo
 conda env create -f environment.yml   # or: mamba env create -f environment.yml
 conda activate metalgenie-evo
 
+pip install -e .
+
 MetalGenie-Evo --help
 ```
 
