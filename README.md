@@ -19,7 +19,10 @@ If you use MetalGenie-Evo in your research, please cite all of the following tha
 > Aramaki T, Blanc-Mathieu R, Endo H, Ohkubo K, Kanehisa M, Goto S, Ogata H (2020) *KofamKOALA: KEGG Ortholog assignment based on profile HMM and adaptive score threshold.* Bioinformatics 36:2251–2252. [doi:10.1093/bioinformatics/btz859](https://doi.org/10.1093/bioinformatics/btz859)
 
 **NCBI Protein Family Models** (NF* HMMs):
-> Li W, O'Neill KR, Haft DH, DiCuccio M, Chetvernin V, Badretdin A, Coulouris G, Chitsaz F, Derbyshire MK, Durkin AS, Gonzales NR, Gwadz M, Lanczycki CJ, Song JS, Thanki N, Wang J, Yamashita RA, Yang M, Zheng C, Marchler-Bauer A, Thibaud-Nissen F (2021) *RefSeq: expanding the Prokaryotic Genome Annotation Pipeline reach with protein family model curation.* Nucleic Acids Research 49:D1020–D1028. [doi:10.1093/nar/gkaa1105](https://doi.org/10.1093/nar/gkaa1105)
+> Li W et al. (2021) *RefSeq: expanding the Prokaryotic Genome Annotation Pipeline reach with protein family model curation.* Nucleic Acids Research 49:D1020–D1028. [doi:10.1093/nar/gkaa1105](https://doi.org/10.1093/nar/gkaa1105)
+
+**UniOP** (operon prediction, if using `--operon_prediction`):
+> Su H, Zhang R, Söding J (2024) *UniOP: a universal operon prediction for high-throughput prokaryotic (meta-)genomic data using intergenic distance.* bioRxiv. [doi:10.1101/2024.11.11.623000](https://www.biorxiv.org/content/10.1101/2024.11.11.623000)
 
 ---
 
@@ -30,8 +33,10 @@ If you use MetalGenie-Evo in your research, please cite all of the following tha
 - [Installation](#installation)
 - [HMM library](#hmm-library)
 - [Usage](#usage)
+- [Operon prediction with UniOP](#operon-prediction-with-uniop)
+- [Anvi'o integration](#anvio-integration)
 - [Output files](#output-files)
-- [Operon rules](#operon-rules)
+- [Operon filtering logic](#operon-filtering-logic)
 - [Extending the HMM library](#extending-the-hmm-library)
 - [Visualisation](#visualisation)
 - [Differences from FeGenie at a glance](#differences-from-fegenie-at-a-glance)
@@ -42,53 +47,49 @@ If you use MetalGenie-Evo in your research, please cite all of the following tha
 
 ### 1 — Coordinate-based operon clustering
 
-FeGenie clusters genes into putative operons by comparing the numerical suffix of Prodigal's ORF names (e.g. `scaffold_1_5` and `scaffold_1_9` differ by 4, within the default gap of 5). MetalGenie-Evo optionally reads Prodigal's **GFF output** (`--gff_dir`) and clusters by actual base-pair distance between gene endpoints (`--max_bp_gap`, default 5 000 bp), which is more robust across different gene callers and assembly formats. The original ordinal-index method is kept as a fallback when GFF files are not available, ensuring full backward compatibility.
+FeGenie clusters genes by comparing the numerical suffix of Prodigal's ORF names. MetalGenie-Evo optionally reads Prodigal's GFF output (`--gff_dir`) and clusters by actual base-pair distance between gene endpoints (`--max_bp_gap`, default 5 000 bp). The original ordinal-index method is kept as a fallback.
 
-> **Note for reproducibility:** FeGenie's published results use the ordinal-index method with `--max_gap 5`. To replicate those results exactly, run MetalGenie-Evo without `--gff_dir` and with `--max_gap 5`.
+> **Note for reproducibility:** FeGenie's published results use the ordinal-index method with `--max_gap 5`. To replicate exactly, run without `--gff_dir` and with `--max_gap 5`.
 
 ### 2 — Strand-aware clustering
 
-With `--strand_aware`, MetalGenie-Evo separates hits on opposite DNA strands into distinct clusters before applying operon rules. This option reduces false-positive operon calls for divergently transcribed gene pairs, and is particularly relevant for magnetosome islands and iron-reduction outer-membrane complexes.
+With `--strand_aware`, MetalGenie-Evo separates hits on opposite DNA strands into distinct clusters before applying operon rules. Particularly relevant for magnetosome islands and iron-reduction outer-membrane complexes.
 
 ### 3 — Parallel execution
 
-MetalGenie-Evo dispatches all `(genome, HMM)` pairs to a `ProcessPoolExecutor`, using `--threads` CPUs in total. Already-computed `.tblout` files are cached and reused on subsequent runs, so interrupted analyses can be resumed without re-running hmmsearch.
+All `(genome, HMM)` pairs are dispatched to a `ProcessPoolExecutor`. Already-computed `.tblout` files are cached and reused on subsequent runs.
 
-### 4 — Configurable operon rules
+### 4 — FeGenie-exact operon filtering + configurable rules for model organisms
 
-MetalGenie-Evo externalises FeGenie's operon-context filters into a **JSON file** (`hmm_library/operon_rules.json`) that travels with the HMM library. All original FeGenie rules are encoded exactly. New databases can declare their own rules — or declare `report_all_categories` to bypass filtering entirely — without modifying the source code.
+By default, MetalGenie-Evo uses an exact reimplementation of FeGenie's operon-context filtering logic, including the per-ORF pass/break behaviour for iron acquisition categories. Users working with well-characterised model organisms can override this with a custom `operon_rules.json` in the HMM library directory. See [Operon filtering logic](#operon-filtering-logic).
 
 ### 5 — Expanded HMM library
 
-The bundled library integrates four sources (see [Citations](#citations)):
-- **FeGenie** — original iron cycling profiles
-- **Tabuteau et al. 2025** — additional iron acquisition HMMs for bacteria and fungi, sourced from KOfam, FeGenie, and NCBI Protein Family Models
-- **NCBI NF\* / Pfam** — selected profiles for iron transport and siderophore systems
-- **MetHMMDB** — 254 profiles for 121 metal mobility resistance genes
+Integrates four sources: FeGenie, Tabuteau et al. 2025 (KOfam + custom), NCBI NF*/Pfam, and MetHMMDB. All sources are merged, deduplicated, and tracked in a versioned registry.
 
-All sources are merged, deduplicated, and tracked in a versioned registry (`hmm_registry.tsv`). The curation process is fully reproducible via `scripts/curate_hmm_library.py`.
+### 6 — Metagenome-specific features
 
-### 6 — Modular codebase
+- **Integrated Prodigal** (`--fna_dir --meta`) — ORF prediction internally in metagenomic mode
+- **Contig length filter** (`--min_contig_len`) — skips ORFs on short contigs
+- **Relaxed operon thresholds** (`--relaxed_operons`) — halves thresholds for short contigs
+- **TPM-normalised coverage** (`--norm_coverage`)
+- **Contig column** in all outputs
+- **Long-format output** (`MetalGenie-Evo-results-long.tsv`)
 
-MetalGenie-Evo separates concerns into focused, testable functions and uses `pathlib` and `subprocess` throughout. Output CSV formats are identical to FeGenie's, so existing R plotting scripts (`DotPlot.R`, `dendro-heatmap.R`) work without modification.
+### 7 — UniOP operon prediction (optional)
 
-### 7 — Metagenome-specific features
+The `--operon_prediction` flag runs [UniOP](https://github.com/hongsua/UniOP) on each genome/MAG and produces `MetalGenie-Evo-OperonStructure.tsv`, linking each HMM hit to its predicted operon. UniOP uses only intergenic distances and is fully applicable to MAGs and novel organisms. The operon prediction is an independent, additional output — it does not filter or modify HMM hits.
 
-When working with metagenomic assemblies rather than isolated genomes, MetalGenie-Evo provides:
+### 8 — Anvi'o integration (optional)
 
-- **Integrated Prodigal** (`--fna_dir --meta`) — runs ORF prediction internally in metagenomic mode, producing `.faa` and `.gff` automatically
-- **Contig length filter** (`--min_contig_len`) — skips ORFs on contigs shorter than a given threshold, reducing noise from incomplete assemblies
-- **Relaxed operon thresholds** (`--relaxed_operons`) — halves minimum gene-count requirements for clusters on short contigs where operons may be fragmented across assembly breaks
-- **TPM-normalised coverage** (`--norm_coverage`) — normalises the coverage heatmap to TPM using contig lengths, enabling cross-sample comparisons
-- **Contig column in all outputs** — every output file includes the source contig, enabling downstream linkage to binning or taxonomic classification results
-- **Long-format output** (`MetalGenie-Evo-results-long.tsv`) — tidy TSV with one row per ORF, no cluster separators, no sequences; directly loadable in R (`read_tsv()`) or pandas
+The `--anvio` flag produces `MetalGenie-Evo-anvio-functions.tsv`, directly importable with `anvi-import-functions`. When used with `--bakta_gff_dir`, MetalGenie-Evo maps Prodigal ORF names to Bakta gene IDs via coordinate matching, enabling seamless integration with Anvi'o databases built from Bakta external gene calls.
 
 ---
 
 ## How it works
 
 ```
-Input FAA files (Prodigal ORFs)
+Input FAA files (Prodigal ORFs or --fna_dir for internal prediction)
         │
         ▼
 hmmsearch (parallel, per-HMM bitscore cutoffs from HMM-bitcutoffs.txt)
@@ -102,9 +103,10 @@ Genomic clustering
   └── Index mode  →  Prodigal ordinal gap (fallback, FeGenie-compatible)
         │
         ▼
-Operon-context filtering  (operon_rules.json)
-  ├── Per-rule checks  (FLEET, MAM, Fox, Mtr, DFE, siderophore …)
-  └── report_all bypass for metal_resistance-* categories
+Operon-context filtering
+  ├── FeGenie exact port (default)  — per-ORF pass/break logic
+  ├── JSON rule engine (if operon_rules.json present)
+  └── --all_results  — report everything unfiltered
         │
         ▼
 Second-pass per-gene filters
@@ -116,17 +118,17 @@ Second-pass per-gene filters
 Heme-motif counting  (CXXCH, CX3CH, CX4CH, CX14CH, CX15CH)
         │
         ▼
-Output CSVs
+Output CSVs  +  optional UniOP operon structure  +  optional Anvi'o TSV
 ```
 
-All FeGenie operon rules are preserved exactly:
+FeGenie operon rules implemented exactly:
 
 | System | Rule |
 |---|---|
-| FLEET (iron oxidation e⁻ shuttle) | ≥ 5 unique FLEET genes in cluster |
+| FLEET | ≥ 5 unique FLEET genes in cluster |
 | Magnetosome (MAM) | ≥ 5 unique MAM genes in cluster |
 | FoxABC | ≥ 2 of 3 subunits |
-| FoxEYZ | FoxE (anchor) must be present |
+| FoxEYZ | FoxE anchor must be present |
 | DFE operons | ≥ 3 of 4–5 subunits |
 | Mtr/Mto disambiguation | MtoA+MtrB → oxidation; MtrA+MtrB → reduction |
 | Siderophore transport | ≥ 2 distinct transport HMMs, or lone trusted receptor |
@@ -139,7 +141,7 @@ All FeGenie operon rules are preserved exactly:
 
 ## Installation
 
-MetalGenie-Evo is installed by cloning this repository and creating the conda environment. The `environment.yml` handles everything — it installs all external dependencies (HMMER, Prodigal, samtools) **and** registers the `MetalGenie-Evo` command via pip in one step.
+MetalGenie-Evo is installed by cloning this repository and creating the conda environment. The `environment.yml` installs all external dependencies and registers the `MetalGenie-Evo` command via pip in one step.
 
 ### Dependencies
 
@@ -151,54 +153,45 @@ MetalGenie-Evo is installed by cloning this repository and creating the conda en
 | HMMER (`hmmsearch`) | 3.3 | HMM search |
 | Prodigal | 2.6.3 | ORF prediction from nucleotide input |
 
-**Coverage heatmap (optional, only needed for `--bam`):**
+**Coverage heatmap (optional):**
 
 | Tool | Min version | Purpose |
 |---|---|---|
 | samtools | 1.10 | Per-contig coverage from BAM files |
 
-> If you already have pre-computed depth files from MetaBAT2 (`jgi_summarize_bam_contig_depths`) or BBMap (`pileup.sh`), use `--depth` instead of `--bam` — samtools is not needed.
+**Operon prediction (optional):**
+
+| Tool | Notes |
+|---|---|
+| UniOP | Not on conda/pip — install separately (see below) |
+
+> If you have pre-computed depth files from MetaBAT2 or BBMap, use `--depth` — samtools is not needed.
 
 ---
 
 ### Option 1 — Conda / Mamba (recommended)
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
 
-# 2. Create the conda environment — installs all dependencies
-#    AND registers the MetalGenie-Evo command automatically
-conda env create -f environment.yml
-# or faster:
-mamba env create -f environment.yml
-
-# 3. Activate
+conda env create -f environment.yml   # or: mamba env create -f environment.yml
 conda activate metalgenie-evo
 
-# 4. Verify
 MetalGenie-Evo --help
 ```
 
-The environment is named `metalgenie-evo` automatically. No `chmod`, no PATH editing, no `setup.sh` required.
+No `chmod`, no PATH editing, no `setup.sh` required.
 
 ---
 
 ### Option 2 — Add to an existing conda environment
 
-If you already have an active environment with HMMER and Prodigal:
-
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-
-# Install any missing tools
 conda install -c bioconda hmmer>=3.3 prodigal>=2.6.3 samtools>=1.10
-
-# Register the MetalGenie-Evo command
 pip install -e .
-
 MetalGenie-Evo --help
 ```
 
@@ -209,42 +202,53 @@ MetalGenie-Evo --help
 ```bash
 git clone https://github.com/your-username/MetalGenie-Evo.git
 cd MetalGenie-Evo
-
-# Verify dependencies are in PATH
-python3 --version    # must be >= 3.8
-hmmsearch -h         # must be >= 3.3
-prodigal -v          # must be >= 2.6.3
-samtools --version   # must be >= 1.10  (optional)
-
-# Register the command
 pip install -e .
-
 MetalGenie-Evo --help
 ```
 
+---
+
+### Installing UniOP (optional)
+
+UniOP is required only for `--operon_prediction`. It is a standalone Python script, not distributed through conda or pip.
+
+```bash
+# Clone UniOP
+git clone https://github.com/hongsua/UniOP.git
+
+# Copy Prodigal into UniOP's working directory
+# (required only when passing FNA files; not needed with Prodigal-format FAA headers)
+cp $(which prodigal) UniOP/src/
+
+# Install Python dependencies
+pip install pandas numpy scikit-learn
+```
+
+Pass the path when running MetalGenie-Evo:
+```bash
+MetalGenie-Evo ... --operon_prediction --uniop_path /path/to/UniOP/src/UniOP
+```
+
+---
 
 ## HMM library
 
-The `hmm_library/` directory is **included in this repository** and is ready to use out of the box. It contains:
+The `hmm_library/` directory is included in this repository and is ready to use. It contains:
 
-- **FeGenie iron HMMs** — original profiles for iron cycling genes (iron reduction, iron oxidation, iron acquisition, iron storage, magnetosome formation, iron gene regulation)
-- **Tabuteau et al. HMMs** — additional iron acquisition profiles from KOfam, FeGenie, and NCBI NF* sources, curated for bacteria and fungi
-- **MetHMMDB metal resistance HMMs** — profiles for metal mobility resistance genes (arsenic, copper, mercury, zinc/cobalt/cadmium, chromium, and more)
+- **FeGenie iron HMMs** — original profiles for iron cycling genes
+- **Tabuteau et al. HMMs** — additional iron acquisition profiles from KOfam, FeGenie, and NCBI NF* sources
+- **MetHMMDB metal resistance HMMs** — profiles for metal mobility resistance genes
 - `HMM-bitcutoffs.txt` — per-HMM bitscore thresholds
 - `MetalGenie-map.txt` — HMM stem → readable gene name mapping
-- `hmm_registry.tsv` — full provenance record (source, NSEQ, cutoff, dates)
+- `hmm_registry.tsv` — full provenance record
 - `deduplication_log.tsv` — log of all cross-source duplicate decisions
-- `operon_rules.json` — configurable operon-context filtering rules
-
-No setup step is required. Clone the repo and run.
+- `operon_rules.json` — configurable filtering rules (for model organisms; absent = FeGenie default)
 
 ---
 
 ## Usage
 
-### Basic run (ORF FASTA input)
-
-If you already have Prodigal `.faa` files:
+### Basic run (Prodigal FAA input)
 
 ```bash
 MetalGenie-Evo \
@@ -253,149 +257,196 @@ MetalGenie-Evo \
     --out      results/
 ```
 
-### With GFF-based clustering (recommended)
-
-Prodigal produces both `.faa` and `.gff` output. Pass the GFF directory to enable coordinate-based operon clustering:
+### From nucleotide assemblies (Prodigal internal)
 
 ```bash
-# Run Prodigal (metagenome mode)
-mkdir -p orfs/ gffs/
-for f in genomes/*.fna; do
-    base=$(basename "$f" .fna)
-    prodigal -i "$f" -p meta \
-             -a "orfs/${base}.faa" \
-             -f gff -o "gffs/${base}.gff" -q
-done
-
-# Run MetalGenie-Evo
 MetalGenie-Evo \
-    --faa_dir    orfs/ \
-    --gff_dir    gffs/ \
-    --hmm_dir    hmm_library/ \
-    --out        results/ \
-    --threads    16 \
-    --max_bp_gap 5000
+    --fna_dir  assemblies/ \
+    --fna_ext  fna \
+    --meta \
+    --hmm_dir  hmm_library/ \
+    --out      results/ \
+    --threads  16
 ```
 
-### Strand-aware clustering
+### With Bakta-annotated genomes
 
 ```bash
 MetalGenie-Evo \
-    --faa_dir      orfs/ \
-    --gff_dir      gffs/ \
-    --hmm_dir      hmm_library/ \
-    --out          results/ \
-    --threads      16 \
-    --strand_aware
-```
-
-### Normalised heatmap output
-
-```bash
-MetalGenie-Evo \
-    --faa_dir orfs/ \
-    --hmm_dir hmm_library/ \
-    --out     results/ \
-    --norm                   # normalise counts by total ORFs × 1000
+    --faa_dir  bakta_output/ \     # Bakta .faa files
+    --gff_dir  bakta_output/ \     # Bakta .gff3 files (same directory is fine)
+    --hmm_dir  hmm_library/ \
+    --out      results/ \
+    --threads  16
 ```
 
 ### Report all hits (skip operon filtering)
 
 ```bash
-MetalGenie-Evo \
-    --faa_dir    orfs/ \
-    --hmm_dir    hmm_library/ \
-    --out        results/ \
-    --all_results
+MetalGenie-Evo --faa_dir orfs/ --hmm_dir hmm_library/ --out results/ --all_results
 ```
 
+### Coverage-based heatmap
 
-### Coverage-based heatmap (BAM files)
-
-When you have BAM files from read mapping, MetalGenie-Evo can produce an additional heatmap where values represent read coverage instead of gene counts.
-
-**Single BAM file** (same BAM for all genomes/bins):
 ```bash
-MetalGenie-Evo \
-    --faa_dir orfs/ \
-    --hmm_dir hmm_library/ \
-    --out     results/ \
-    --bam     mapping/sample.sorted.bam
+# From BAM files
+MetalGenie-Evo --faa_dir orfs/ --hmm_dir hmm_library/ --out results/ \
+    --bams bam_map.tsv --norm_coverage
+
+# From pre-computed depth files
+MetalGenie-Evo --faa_dir orfs/ --hmm_dir hmm_library/ --out results/ \
+    --depths depth_map.tsv
 ```
 
-**Per-genome BAM files** (different BAM per genome):
-```bash
-# Prepare a TSV: genome_label<TAB>bam_path
-echo -e "bin_001.faa\tmapping/bin_001.sorted.bam" > bam_map.tsv
-echo -e "bin_002.faa\tmapping/bin_002.sorted.bam" >> bam_map.tsv
-
-MetalGenie-Evo \
-    --faa_dir orfs/ \
-    --hmm_dir hmm_library/ \
-    --out     results/ \
-    --bams    bam_map.tsv
-```
-
-**Pre-computed depth files** (from MetaBAT2, BBMap, or samtools):
-```bash
-# If you already ran jgi_summarize_bam_contig_depths or BBMap pileup.sh:
-MetalGenie-Evo \
-    --faa_dir orfs/ \
-    --hmm_dir hmm_library/ \
-    --out     results/ \
-    --depth   mapping/contigs.depth       # single file
-
-# Or per-genome:
-MetalGenie-Evo \
-    --faa_dir  orfs/ \
-    --hmm_dir  hmm_library/ \
-    --out      results/ \
-    --depths   depth_map.tsv              # genome_label<TAB>depth_path
-```
-
-Accepted depth file formats: `jgi_summarize_bam_contig_depths`, `samtools coverage -H`, BBMap `pileup.sh`, or a plain two-column `contig<TAB>depth` file.
-
-The coverage heatmap is written as `MetalGenie-Evo-coverage-heatmap.csv` alongside the standard gene-count heatmap.
+Where `bam_map.tsv` / `depth_map.tsv` is a two-column TSV: `genome_label<TAB>file_path`.
 
 ### Full argument reference
 
 | Argument | Default | Description |
 |---|---|---|
-| `--faa_dir` | *(required)* | Directory of ORF `.faa` files |
-| `--faa_ext` | `faa` | Extension of ORF files (without dot) |
-| `--gff_dir` | — | Directory of Prodigal `.gff` files |
+| `--faa_dir` | *(required\*)* | Directory of ORF `.faa` files |
+| `--fna_dir` | *(required\*)* | Directory of nucleotide assemblies; Prodigal run internally |
+| `--faa_ext` | `faa` | Extension of ORF files |
+| `--fna_ext` | `fna` | Extension of assembly files |
+| `--meta` | off | Prodigal metagenomic mode (`-p meta`) |
+| `--gff_dir` | — | Prodigal/Bakta GFF files for bp-based clustering |
 | `--hmm_dir` | *(required)* | HMM library directory |
 | `--out` | `metalgenie_evo_out` | Output directory |
 | `--threads` | `4` | Total CPU threads |
 | `--hmm_threads` | `1` | CPUs per individual hmmsearch call |
-| `--max_gap` | `5` | Max ORF-index gap (index-mode clustering) |
+| `--max_gap` | `5` | Max ORF-index gap (index-mode, FeGenie-compatible) |
 | `--max_bp_gap` | `5000` | Max bp gap between gene ends (GFF mode) |
-| `--strand_aware` | off | Split clusters at strand changes (GFF only) |
+| `--strand_aware` | off | Split clusters at strand changes (GFF mode only) |
 | `--all_results` | off | Skip all operon-context filters |
-| `--norm` | off | Normalise heatmap counts per total ORFs |
-| `--keep_tblout` | off | Keep cached `.tblout` files after run |
-| `--bam` | — | Single sorted BAM file for coverage heatmap (requires samtools ≥ 1.10) |
-| `--bams` | — | TSV file: `genome_label<TAB>bam_path` for per-genome BAM files |
-| `--depth` | — | Pre-computed depth file (jgi / BBMap / samtools format) |
-| `--depths` | — | TSV file: `genome_label<TAB>depth_path` for per-genome depth files |
-| `--norm_coverage` | off | Normalise coverage heatmap to TPM |
-| **Metagenome options** | | |
-| `--fna_dir` | — | Directory of nucleotide assemblies (mutually exclusive with `--faa_dir`); Prodigal run internally |
-| `--fna_ext` | `fna` | Extension of assembly files |
-| `--meta` | off | Prodigal metagenomic mode (`-p meta`) |
-| `--min_contig_len` | `0` | Skip ORFs on contigs shorter than this (bp); 0 = no filter |
+| `--norm` | off | Normalise gene-count heatmap per total ORFs × 1000 |
+| `--keep_tblout` | off | Keep cached `.tblout` files |
+| `--min_contig_len` | `0` | Skip ORFs on contigs shorter than this (bp) |
 | `--relaxed_operons` | off | Halve operon min-gene thresholds for short contigs |
 | `--relaxed_threshold` | `10000` | Contig length (bp) below which thresholds are relaxed |
+| `--bam` | — | Single sorted BAM file (requires samtools ≥ 1.10) |
+| `--bams` | — | TSV: `genome<TAB>bam_path` |
+| `--depth` | — | Pre-computed depth file (jgi / BBMap / samtools / plain) |
+| `--depths` | — | TSV: `genome<TAB>depth_path` |
+| `--norm_coverage` | off | TPM-normalise coverage heatmap |
+| `--operon_prediction` | off | Run UniOP and write `OperonStructure.tsv` |
+| `--uniop_path` | `uniop` | Path to UniOP script |
+| `--bakta_gff_dir` | — | Bakta GFF3 directory for Prodigal↔Bakta ID mapping |
+| `--anvio` | off | Write Anvi'o-compatible functions TSV |
+
+\* `--faa_dir` and `--fna_dir` are mutually exclusive; exactly one is required.
+
+---
+
+## Operon prediction with UniOP
+
+UniOP predicts operons from intergenic distances alone — no RNA-seq, no functional annotations, no reference genomes required. It achieves AUC-PR of 0.95–0.99 across diverse prokaryotic genomes and has been validated on 3,269 MAGs across 15 phyla. Runtime averages 1.3 seconds per genome on CPU.
+
+MetalGenie-Evo runs UniOP as an independent step after HMM annotation. Operon predictions are an additional output and do not filter or modify HMM hits.
+
+### Input detection
+
+MetalGenie-Evo detects the FAA header format automatically:
+
+- **Prodigal FAA headers** contain embedded coordinates (`# start # end # strand`) → UniOP is called with `-a faa_file`
+- **Bakta / NCBI FAA headers** have no coordinates → requires `--fna_dir`; MetalGenie-Evo passes the FNA files to UniOP with `-i fna_file`
+
+### Usage
+
+```bash
+# Prodigal FAA (headers have coordinates)
+MetalGenie-Evo \
+    --faa_dir          orfs/ \
+    --hmm_dir          hmm_library/ \
+    --out              results/ \
+    --operon_prediction \
+    --uniop_path       /path/to/UniOP/src/UniOP
+
+# Bakta FAA (needs FNA for UniOP)
+MetalGenie-Evo \
+    --fna_dir          assemblies/ \
+    --bakta_gff_dir    bakta_output/ \
+    --hmm_dir          hmm_library/ \
+    --out              results/ \
+    --operon_prediction \
+    --uniop_path       /path/to/UniOP/src/UniOP \
+    --anvio
+```
+
+UniOP results are cached in `results/_uniop/<genome>/` and reused on subsequent runs.
+
+---
+
+## Anvi'o integration
+
+The `--anvio` flag produces `MetalGenie-Evo-anvio-functions.tsv` for direct import with `anvi-import-functions`.
+
+### Without Bakta mapping
+
+If you used Prodigal FAA files directly, `gene_callers_id` contains Prodigal ORF names. Map these to Anvi'o integer IDs before importing:
+
+```bash
+# Export gene calls from your contigs database
+anvi-export-gene-calls -c CONTIGS.db -o gene_calls.tsv
+
+# Join on coordinates to get integer IDs, then import
+anvi-import-functions \
+    -c CONTIGS.db \
+    -i MetalGenie-Evo-anvio-functions.tsv \
+    -p MetalGenie-Evo
+```
+
+### With Bakta mapping (`--bakta_gff_dir`) — recommended
+
+When using `--fna_dir` + `--bakta_gff_dir`, MetalGenie-Evo runs Prodigal internally, then matches each Prodigal ORF to its Bakta gene ID via coordinate overlap (±3 bp tolerance). The `gene_callers_id` column in the Anvi'o TSV will contain Bakta IDs (e.g. `AMXMAG_00053`), which map directly to Anvi'o integer IDs when the contigs database was built from Bakta external gene calls.
+
+```bash
+# Step 1 — Build Anvi'o contigs database from Bakta external gene calls
+anvi-script-process-genbank \
+    --input-genbank bakta_output/genome.gbff \
+    --output-dir    anvio_input/
+
+anvi-gen-contigs-database \
+    -f anvio_input/genome.fa \
+    --external-gene-calls anvio_input/gene_calls.tsv \
+    -o CONTIGS.db
+
+# Step 2 — Run MetalGenie-Evo with Bakta mapping
+MetalGenie-Evo \
+    --fna_dir       assemblies/ \
+    --bakta_gff_dir bakta_output/ \
+    --hmm_dir       hmm_library/ \
+    --out           results/ \
+    --anvio
+
+# Step 3 — Import directly (Bakta IDs match Anvi'o gene_callers_id)
+anvi-import-functions \
+    -c CONTIGS.db \
+    -i results/MetalGenie-Evo-anvio-functions.tsv \
+    -p MetalGenie-Evo
+```
 
 ---
 
 ## Output files
 
-All output files are written to `--out/`.
+### Standard outputs (always written)
 
-### `MetalGenie-Evo-summary.csv`
+| File | Description |
+|---|---|
+| `MetalGenie-Evo-summary.csv` | Per-ORF detailed results with cluster separators |
+| `MetalGenie-Evo-geneSummary-clusters.csv` | FeGenie R-script compatible compact summary |
+| `MetalGenie-Evo-heatmap-data.csv` | Gene-count matrix (categories × genomes) |
+| `MetalGenie-Evo-results-long.tsv` | Tidy long-format TSV, one row per ORF |
 
-One row per reported ORF. Cluster separators (`#,#,…`) mark operon boundaries.
+### Optional outputs
+
+| File | Requires |
+|---|---|
+| `MetalGenie-Evo-coverage-heatmap.csv` | `--bam` / `--bams` / `--depth` / `--depths` |
+| `MetalGenie-Evo-OperonStructure.tsv` | `--operon_prediction` |
+| `MetalGenie-Evo-anvio-functions.tsv` | `--anvio` |
+
+### Column reference — `MetalGenie-Evo-summary.csv`
 
 | Column | Description |
 |---|---|
@@ -410,41 +461,44 @@ One row per reported ORF. Cluster separators (`#,#,…`) mark operon boundaries.
 | `heme_c_motifs` | Count of CXXCH heme-binding motifs |
 | `protein_sequence` | Amino acid sequence |
 
-### `MetalGenie-Evo-geneSummary-clusters.csv`
+### Column reference — `MetalGenie-Evo-OperonStructure.tsv`
 
-Compact version compatible with FeGenie's R plotting scripts (`DotPlot.R`, `dendro-heatmap.R`). Includes `contig` column.
-
-### `MetalGenie-Evo-heatmap-data.csv`
-
-Gene-count matrix: rows = functional categories, columns = genomes.
-With `--norm`: values are `(gene_count / total_orfs) × 1000`.
-
-### `MetalGenie-Evo-results-long.tsv`
-
-Tidy long-format TSV — one row per ORF, no cluster separators, no protein sequences. Includes `contig` and `contig_len` columns. Directly loadable in R or pandas for comparative analyses.
-
-### `MetalGenie-Evo-coverage-heatmap.csv`
-
-Coverage-based matrix (only written when `--bam`, `--bams`, `--depth`, or `--depths` is provided).
-With `--norm_coverage`: values are TPM-normalised using contig lengths.
+| Column | Description |
+|---|---|
+| `operon_id` | UniOP operon ID (e.g. `genome_OP0001`) or `singleton_...` |
+| `genome` | Source genome filename |
+| `contig` | Source contig |
+| `orf` | Prodigal ORF identifier |
+| `bakta_gene_id` | Bakta gene ID — only present with `--bakta_gff_dir` |
+| `gene` | Readable gene name |
+| `category` | Functional category |
+| `hmm_stem` | HMM model name |
+| `bitscore` | hmmsearch bitscore |
+| `e_value` | hmmsearch E-value |
+| `unioperon_members` | Other HMM-positive ORFs in the same UniOP operon |
 
 ---
 
-## Operon rules
+## Operon filtering logic
 
-Operon rules are defined in `hmm_library/operon_rules.json`. If the file is absent, MetalGenie-Evo falls back to the built-in FeGenie defaults.
+### Default: FeGenie exact port
 
-### Rule schema
+By default (no `operon_rules.json` in `--hmm_dir`), MetalGenie-Evo uses an exact reimplementation of FeGenie's operon-context filtering. Each cluster is routed to exactly one rule handler based on which special genes are present. For iron acquisition categories, filtering uses a **per-ORF pass/break pattern**: a gene that does not meet the co-occurrence threshold is silently skipped, but other genes in the same cluster are still reported. This replicates FeGenie's original behaviour.
+
+Use `--all_results` to bypass all filtering entirely.
+
+### For model organisms: JSON rule engine
+
+If `operon_rules.json` is present in `--hmm_dir`, the JSON rule engine is used instead. Intended for users working with well-characterised organisms.
 
 ```json
 {
   "report_all_categories": ["metal_resistance-*", "iron_storage"],
-
   "rules": [
     {
       "name":       "FLEET",
       "categories": ["iron_oxidation"],
-      "genes":      ["EetA", "EetB", "Ndh2", "FmnB", "FmnA", "DmkA", "DmkB", "PplA"],
+      "genes":      ["EetA","EetB","Ndh2","FmnB","FmnA","DmkA","DmkB","PplA"],
       "rule":       "require_n_of",
       "min_genes":  5,
       "on_fail":    "passthrough_non_members"
@@ -453,164 +507,77 @@ Operon rules are defined in `hmm_library/operon_rules.json`. If the file is abse
 }
 ```
 
-### `report_all_categories`
+`report_all_categories` accepts glob patterns — any cluster whose entire category set matches bypasses all rules. MetHMMDB categories (`metal_resistance-*`) and `iron_storage` bypass rules by default.
 
-Glob patterns. Any cluster whose **entire** category set matches one of these patterns bypasses all rules and is reported as-is. MetHMMDB categories (`metal_resistance-*`) and `iron_storage` are included by default.
-
-### Rule types
-
-| `rule` | Behaviour |
+| Rule type | Behaviour |
 |---|---|
-| `require_n_of` | Cluster must contain ≥ `min_genes` unique members of `genes` |
-| `require_anchor` | A specific `anchor` gene must be present |
-| `require_n_cat` | Cluster must have ≥ `min_genes` distinct HMMs whose category is in `categories` |
-| `require_n_cat_or_lone_trusted` | As above, but lone hits in `trusted_lone` are also accepted |
-| `mtr_disambiguation` | Re-assigns category based on Mtr/Mto subunit co-presence |
+| `require_n_of` | ≥ `min_genes` unique members of `genes` |
+| `require_anchor` | Specific `anchor` gene must be present |
+| `require_n_cat` | ≥ `min_genes` distinct HMMs in `categories` |
+| `require_n_cat_or_lone_trusted` | As above, or lone hit in `trusted_lone` |
+| `mtr_disambiguation` | Re-assigns category based on Mtr/Mto co-presence |
 
-### `on_fail` actions
-
-| `on_fail` | What happens when a rule threshold is not met |
+| `on_fail` | Behaviour |
 |---|---|
-| `passthrough_non_members` | Keep only genes **not** in the rule's gene set |
+| `passthrough_non_members` | Keep genes not in the rule's gene set |
 | `drop` | Remove the entire cluster |
-| `keep_all` | Keep everything (used by disambiguation rules) |
-
-### Adding rules for a new database
-
-```json
-{
-  "name":       "MY_OPERON",
-  "categories": ["my_category"],
-  "genes":      ["GeneA", "GeneB", "GeneC"],
-  "rule":       "require_n_of",
-  "min_genes":  2,
-  "on_fail":    "drop"
-}
-```
-
-Or to report every hit unconditionally:
-
-```json
-{
-  "report_all_categories": ["metal_resistance-*", "iron_storage", "my_category"]
-}
-```
+| `keep_all` | Keep everything |
 
 ---
 
 ## Extending the HMM library
-
-To add new HMM sources, use `scripts/curate_hmm_library.py`. This script handles category assignment, cross-source deduplication, cutoff loading, and provenance tracking. A full curation report (`curation_report.tsv`) and deduplication log are written alongside the library for transparency and reproducibility.
 
 ```bash
 # Full rebuild from all sources
 python scripts/curate_hmm_library.py \
     --fegenie_dir   /path/to/FeGenie/hmms/iron/ \
     --flat_dir      /path/to/new_iron_hmms  iron_aquisition  tabuteau \
-    --flat_dir      /path/to/others         iron_aquisition  interpro \
     --methmmdb_json /path/to/MetHMMDB/metadata.json \
     --methmmdb_dir  /path/to/MetHMMDB/ \
     --out_dir       hmm_library/ \
     --log           curation_report.tsv
 
-# Verify library consistency
+# Verify
 python scripts/curate_hmm_library.py --verify hmm_library/
 ```
 
-To add individual HMMs manually without rebuilding:
-
-1. Place `.hmm` files in a subdirectory of `hmm_library/` named after the functional category.
-2. Add bitscore cutoffs to `hmm_library/HMM-bitcutoffs.txt` (`stem<tab>cutoff`).
-3. Add readable gene names to `hmm_library/MetalGenie-map.txt` (`stem<tab>gene_name`).
-4. Optionally add operon rules to `hmm_library/operon_rules.json`.
+To add individual HMMs manually: place `.hmm` files in a subdirectory of `hmm_library/` named after the category, add cutoffs to `HMM-bitcutoffs.txt`, names to `MetalGenie-map.txt`, and optionally rules to `operon_rules.json`.
 
 ---
 
 ## Visualisation
 
-MetalGenie-Evo includes `scripts/plot_heatmap.R`, a standalone R script that generates publication-ready heatmaps from the tool's CSV outputs.
+MetalGenie-Evo includes `scripts/plot_heatmap.R` for publication-ready heatmaps.
 
-### Features
+**Features:** hierarchical clustering (Ward's method) on both axes; white→orange→red for gene counts, white→blue for coverage; static PDF/PNG via `pheatmap`; interactive self-contained HTML via `plotly`.
 
-- Hierarchical clustering of both rows (categories) and columns (genomes) using Ward's method
-- Automatically adapts colour scale and axis labels to the input type:
-  - gene-count CSV → white → orange → red, log(n+1) transform for large ranges
-  - coverage CSV → white → blue gradient, linear scale
-- Static output (PDF and/or PNG) via `pheatmap`
-- Interactive HTML output via `plotly` — zoomable, with per-cell hover tooltips and integrated PNG export
-
-### Required R packages
-
-Install once into the conda environment:
-
+**Install R packages:**
 ```bash
-conda install -c conda-forge r-pheatmap r-plotly r-htmlwidgets                               r-optparse r-rcolorbrewer r-scales
+conda install -c conda-forge r-pheatmap r-plotly r-htmlwidgets \
+                              r-optparse r-rcolorbrewer r-scales
 ```
 
-Or from within R:
-```r
-install.packages(c("pheatmap","plotly","htmlwidgets",
-                   "optparse","RColorBrewer","scales"))
-```
-
-### Usage
-
+**Usage:**
 ```bash
-# Process entire results directory (all *heatmap*.csv files)
+# Process entire results directory
 Rscript scripts/plot_heatmap.R --input results/
 
-# Single file, both output types
-Rscript scripts/plot_heatmap.R \
-    --input results/MetalGenie-Evo-heatmap-data.csv \
-    --type  both \
-    --format both
+# Static PDF only
+Rscript scripts/plot_heatmap.R --input results/ --type static --format pdf --out figures/
 
-# Static PDF only, output to a figures/ directory
-Rscript scripts/plot_heatmap.R \
-    --input  results/ \
-    --type   static \
-    --format pdf \
-    --out    figures/
-
-# Interactive HTML only, filter out low-count categories
-Rscript scripts/plot_heatmap.R \
-    --input     results/ \
-    --type      interactive \
-    --min_count 1
-
-# Custom dimensions, disable column clustering
-Rscript scripts/plot_heatmap.R \
-    --input          results/ \
-    --width          16 \
-    --height         10 \
-    --no_cluster_cols
+# Interactive HTML, filter low-count categories
+Rscript scripts/plot_heatmap.R --input results/ --type interactive --min_count 1
 ```
-
-### Arguments
 
 | Argument | Default | Description |
 |---|---|---|
-| `--input` | *(required)* | CSV file or MetalGenie-Evo output directory |
+| `--input` | *(required)* | CSV file or output directory |
 | `--type` | `both` | `static` \| `interactive` \| `both` |
-| `--format` | `both` | Static format: `pdf` \| `png` \| `both` |
-| `--out` | same as input | Output directory for plots |
-| `--width` | auto | Plot width in inches |
-| `--height` | auto | Plot height in inches |
-| `--min_count` | `0` | Minimum value to include a category row |
-| `--no_cluster_rows` | off | Disable hierarchical clustering of categories |
-| `--no_cluster_cols` | off | Disable hierarchical clustering of genomes |
-
-### Output files
-
-For each input CSV (e.g. `MetalGenie-Evo-heatmap-data.csv`), the script produces:
-
-| File | Description |
-|---|---|
-| `MetalGenie-Evo-heatmap-data.pdf` | Static heatmap, print-ready |
-| `MetalGenie-Evo-heatmap-data.png` | Static heatmap, for presentations |
-| `MetalGenie-Evo-heatmap-data.html` | Interactive heatmap, self-contained |
-
-If a `MetalGenie-Evo-coverage-heatmap.csv` is also present, it is processed automatically with the same options but a blue colour scale.
+| `--format` | `both` | `pdf` \| `png` \| `both` |
+| `--out` | same as input | Output directory |
+| `--width` / `--height` | auto | Plot dimensions in inches |
+| `--min_count` | `0` | Min value to include a category row |
+| `--no_cluster_rows` / `--no_cluster_cols` | off | Disable clustering axes |
 
 ---
 
@@ -621,12 +588,12 @@ If a `MetalGenie-Evo-coverage-heatmap.csv` is also present, it is processed auto
 | Operon clustering | ORF ordinal index | **bp coordinates (GFF)** + ordinal fallback |
 | Strand awareness | No | **Yes (`--strand_aware`)** |
 | Parallelism | Sequential | **ProcessPoolExecutor** |
-| Operon rules | Hardcoded Python | **JSON config file** |
+| Operon filter logic | Hardcoded Python | **Exact port + JSON override for model organisms** |
 | Result caching | No | **Yes (tblout cache)** |
 | MetHMMDB support | No | **Yes** |
-| Additional iron acquisition HMMs | No | **Yes (Tabuteau et al. 2025)** |
+| Additional iron HMMs | No | **Yes (Tabuteau et al. 2025)** |
 | HMM deduplication | No | **Yes (ACC + NAME + Jaccard, cross-source only)** |
-| Versioned HMM registry | No | **Yes (hmm_registry.tsv)** |
+| Versioned HMM registry | No | **Yes (`hmm_registry.tsv`)** |
 | Normalised heatmap | `--norm` | **`--norm`** (same) |
 | Coverage heatmap | `--bam` | **`--bam` / `--bams` / `--depth` / `--depths`** |
 | Coverage normalisation | No | **TPM (`--norm_coverage`)** |
@@ -635,6 +602,8 @@ If a `MetalGenie-Evo-coverage-heatmap.csv` is also present, it is processed auto
 | Relaxed operon thresholds | No | **Yes (`--relaxed_operons`)** |
 | Contig column in outputs | No | **Yes** |
 | Long-format output | No | **Yes (`-results-long.tsv`)** |
+| Operon prediction | No | **Yes (UniOP, `--operon_prediction`)** |
+| Anvi'o integration | No | **Yes (`--anvio`, `--bakta_gff_dir`)** |
 | R script compatibility | Yes | **Yes (same CSV format)** |
 | FeGenie filter rules | All | **All (exact port)** |
 
