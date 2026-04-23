@@ -1305,47 +1305,66 @@ def main():
     if not args.keep_tblout: shutil.rmtree(tblout_dir,ignore_errors=True)
     else: print(f"[INFO] tblout cache at {tblout_dir}/")
 
-    # ── UniOP operon prediction (optional) ────────────────────────────────────
-    genome_operon_map  = {}
-    prodigal_to_bakta  = {}
+    if not args.keep_tblout: shutil.rmtree(tblout_dir,ignore_errors=True)
+    else: print(f"[INFO] tblout cache at {tblout_dir}/")
 
-    if args.operon_prediction:
-        fna_dir_for_uniop = Path(args.fna_dir) if args.fna_dir else None
-        print(f"[INFO] Running UniOP on {len(faa_files)} genomes…")
-        print(f"       UniOP path: {args.uniop_path}")
-        if fna_dir_for_uniop is None:
-            print("       No --fna_dir: will use FAA files directly "
-                  "(requires Prodigal-format headers)")
-        genome_operon_map = run_uniop(
-            faa_files,
-            fna_dir    = fna_dir_for_uniop,
-            out_dir    = out_dir,
-            uniop_path = args.uniop_path,
-            fna_ext    = args.fna_ext if args.fna_dir else "fna",
-        )
-        if genome_operon_map and args.bakta_gff_dir and gff_dir_path:
+    # ── Bakta ↔ Prodigal coordinate mapping ──────────────────────────────────
+    # Always built when --bakta_gff_dir is provided, independent of UniOP.
+    prodigal_to_bakta = {}
+    if args.bakta_gff_dir:
+        if gff_dir_path:
             print("[INFO] Building Prodigal↔Bakta coordinate map…")
             prodigal_to_bakta = build_prodigal_bakta_map(
                 args.bakta_gff_dir,
                 str(gff_dir_path),
                 faa_files)
-            op_path = out_dir / "MetalGenie-Evo-OperonStructure.tsv"
-            print(f"[INFO] Writing {op_path.name}…")
-            write_operon_structure(str(op_path), final_rows, genome_operon_map,
-                                   prodigal_to_bakta=prodigal_to_bakta)
+            if not prodigal_to_bakta:
+                print("[WARN] Prodigal↔Bakta mapping returned empty. "
+                      "Check that --bakta_gff_dir contains .gff3 files whose "
+                      "basenames match your genome FAA files.", file=sys.stderr)
         else:
-            print("[WARN] UniOP produced no predictions.", file=sys.stderr)
+            print("[WARN] --bakta_gff_dir requires --fna_dir so that Prodigal GFF "
+                  "files are available for coordinate matching. "
+                  "Bakta mapping skipped — Anvi'o output will use Prodigal ORF names.",
+                  file=sys.stderr)
 
-    # ── Bakta ↔ Prodigal mapping (without UniOP) ──────────────────────────────
-    # Build the map even if --operon_prediction was not requested,
-    # so --anvio can use Bakta IDs directly.
-    if args.bakta_gff_dir and not args.operon_prediction:
-        if gff_dir_path and args.fna_dir:
-            print("[INFO] Building Prodigal↔Bakta coordinate map…")
-            prodigal_to_bakta = build_prodigal_bakta_map(
-                args.bakta_gff_dir,
-                str(gff_dir_path),
-                faa_files)
+    # ── UniOP operon prediction (optional) ────────────────────────────────────
+    genome_operon_map = {}
+    if args.operon_prediction:
+        # Auto-resolve if user passed the repo directory instead of the script
+        uniop_script = Path(args.uniop_path)
+        if uniop_script.is_dir():
+            candidate = uniop_script / "src" / "UniOP"
+            if candidate.exists():
+                print(f"[INFO] --uniop_path is a directory — auto-resolved to {candidate}")
+                uniop_script = candidate
+            else:
+                print(f"[ERROR] --uniop_path '{args.uniop_path}' is a directory and "
+                      f"UniOP script not found at {candidate}.\n"
+                      f"        Pass the full path to the script, e.g.:\n"
+                      f"        --uniop_path {args.uniop_path}/src/UniOP",
+                      file=sys.stderr)
+                uniop_script = None
+
+        if uniop_script is not None:
+            fna_dir_for_uniop = Path(args.fna_dir) if args.fna_dir else None
+            print(f"[INFO] Running UniOP on {len(faa_files)} genomes…")
+            print(f"       UniOP script: {uniop_script}")
+            genome_operon_map = run_uniop(
+                faa_files,
+                fna_dir    = fna_dir_for_uniop,
+                out_dir    = out_dir,
+                uniop_path = str(uniop_script),
+                fna_ext    = args.fna_ext if args.fna_dir else "fna",
+            )
+            if genome_operon_map:
+                op_path = out_dir / "MetalGenie-Evo-OperonStructure.tsv"
+                print(f"[INFO] Writing {op_path.name}…")
+                write_operon_structure(str(op_path), final_rows, genome_operon_map,
+                                       prodigal_to_bakta=prodigal_to_bakta)
+            else:
+                print("[WARN] UniOP produced no predictions — "
+                      "see MetalGenie-Evo-run.log for details.", file=sys.stderr)
 
     # ── Anvi'o functions output (optional) ───────────────────────────────────
     if args.anvio:
@@ -1358,6 +1377,26 @@ def main():
         print(f"       gene_callers_id: {id_note}")
         print(f"       Import with: anvi-import-functions -c CONTIGS.db "
               f"-i {anvio_path.name} -p MetalGenie-Evo")
+
+    # ── Write run log ─────────────────────────────────────────────────────────
+    import datetime as _dt
+    log_path = out_dir / "MetalGenie-Evo-run.log"
+    cc2 = defaultdict(int)
+    for r in final_rows: cc2[r["cat"]] += 1
+    with open(log_path, "w") as lf:
+        lf.write("MetalGenie-Evo run log\n")
+        lf.write(f"Date          : {_dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        lf.write(f"Command       : {' '.join(sys.argv)}\n")
+        lf.write(f"Output dir    : {out_dir}\n")
+        lf.write(f"Genomes input : {len(faa_files)}\n")
+        lf.write(f"Genomes hit   : {len({r['genome'] for r in final_rows})}\n")
+        lf.write(f"Total ORFs    : {len(final_rows)}\n")
+        lf.write(f"Bakta mapping : {'yes (' + str(sum(len(v) for v in prodigal_to_bakta.values())) + ' ORFs mapped)' if prodigal_to_bakta else 'no'}\n")
+        lf.write(f"UniOP         : {'yes (' + str(len(genome_operon_map)) + ' genomes)' if genome_operon_map else 'no/failed'}\n")
+        lf.write("\nHits per category:\n")
+        for cat, n in sorted(cc2.items()):
+            lf.write(f"  {n:5d}  {cat}\n")
+    print(f"[INFO] Run log → {log_path}")
 
     n_hit=len({r["genome"] for r in final_rows}); cc=defaultdict(int)
     for r in final_rows: cc[r["cat"]]+=1
