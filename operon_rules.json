@@ -1,5 +1,5 @@
 {
-  "_comment": "MetalGenie-Evo operon rules — place this file in your --hmm_dir directory.",
+  "_comment": "FeGenie-Evo operon rules — place this file in your --hmm_dir directory.",
 
   "report_all_categories": [
     "metal_resistance-*",

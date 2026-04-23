@@ -2,6 +2,7 @@ name: metalgenie-evo
 channels:
   - conda-forge
   - bioconda
+  - defaults
 dependencies:
   # ── Core pipeline ───────────────────────────────────────────────────────────
   - python>=3.8

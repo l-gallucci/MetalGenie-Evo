@@ -104,16 +104,20 @@ def read_map(path):
     return m
 
 def load_operon_rules(hmm_dir):
+    """Return (rules, report_all_pats, json_present).
+    json_present=True → use JSON rule engine (model organisms).
+    json_present=False → use FeGenie exact port (default).
+    """
     p=Path(hmm_dir)/"operon_rules.json"
     if p.exists():
         with open(p) as fh: data=json.load(fh)
         rules=data.get("rules",[])
         pats=data.get("report_all_categories",_REPORT_ALL_PATTERNS)
         print(f"[INFO] Loaded {len(rules)} operon rules from {p}")
-    else:
-        rules=_DEFAULT_OPERON_RULES; pats=_REPORT_ALL_PATTERNS
-        print("[INFO] Using built-in FeGenie operon rules")
-    return rules,pats
+        print(f"       Using JSON rule engine (model-organism mode)")
+        return rules,pats,True
+    print("[INFO] Using FeGenie exact operon logic (no operon_rules.json found)")
+    return [],_REPORT_ALL_PATTERNS,False
 
 # ── Prodigal ──────────────────────────────────────────────────────────────────
 def run_prodigal(fna_files, out_dir, meta_mode=False, threads=1):
@@ -311,10 +315,8 @@ def collect_best_hits(faa_files,cat_hmms,out_tmp):
                         bh[genome][orf]={"hmm_stem":stem,"cat":cat,"evalue":ev,"bitscore":bs}
     return bh
 
-# ── Operon filtering ──────────────────────────────────────────────────────────
+# ── Operon filtering — FeGenie exact port ────────────────────────────────────
 def _cm(cat,pats): return any(fnmatch.fnmatch(cat,p) for p in pats)
-def _ugi(rows,gs): return len({r["hmm_stem"] for r in rows if r["hmm_stem"] in gs})
-def _ric(rows,cs): return [r for r in rows if r["cat"] in cs]
 
 def _mtr(rows):
     stems={r["hmm_stem"] for r in rows}; updated=[dict(r) for r in rows]
@@ -329,45 +331,225 @@ def _mtr(rows):
             if r["hmm_stem"] in {"MtrA","MtrB_TIGR03509"}: r["cat"]="iron_reduction"
     return updated
 
-def apply_rule(cluster_rows,rule_def,relaxed=False):
-    gs=set(rule_def.get("genes",[])); cs=set(rule_def.get("categories",[]))
-    on_fail=rule_def.get("on_fail","keep_all"); rt=rule_def["rule"]
-    sp={r["hmm_stem"] for r in cluster_rows}; cp={r["cat"] for r in cluster_rows}
-    if not ((gs and sp&gs) or (cs and cp&cs)): return cluster_rows
-    raw_min=rule_def.get("min_genes",1)
-    min_n=max(1,raw_min//2) if relaxed else raw_min
-    non_mbrs=[r for r in cluster_rows if r["hmm_stem"] not in gs]
-    if rt=="require_n_of":
-        if _ugi(cluster_rows,gs)>=min_n: return cluster_rows
-        if on_fail=="passthrough_non_members" and non_mbrs: return non_mbrs
-        return cluster_rows if on_fail=="keep_all" else []
-    if rt=="require_anchor":
-        anchor=rule_def.get("anchor","")
-        if anchor in {r["hmm_stem"] for r in cluster_rows if r["hmm_stem"] in gs}: return cluster_rows
-        if on_fail=="passthrough_non_members" and non_mbrs: return non_mbrs
-        return cluster_rows if on_fail=="keep_all" else []
-    if rt=="require_n_cat":
-        if len({r["hmm_stem"] for r in _ric(cluster_rows,cs)})>=min_n: return cluster_rows
-        return cluster_rows if on_fail=="keep_all" else []
-    if rt=="require_n_cat_or_lone_trusted":
-        tl=set(rule_def.get("trusted_lone",[])); cat_m=_ric(cluster_rows,cs)
-        uq={r["hmm_stem"] for r in cat_m}
-        if len(uq)>1 or tl&sp or len(uq)>=min_n: return cluster_rows
-        return cluster_rows if on_fail=="keep_all" else []
-    if rt=="mtr_disambiguation": return _mtr(cluster_rows)
+# FeGenie gene sets
+_FLEET_GENES   = {"EetA","EetB","Ndh2","FmnB","FmnA","DmkA","DmkB","PplA"}
+_MAM_GENES     = {"MamA","MamB","MamE","MamK","MamP","MamM","MamQ","MamI","MamL","MamO"}
+_FOXABC_GENES  = {"FoxA","FoxB","FoxC"}
+_FOXEYZ_GENES  = {"FoxE","FoxY","FoxZ"}
+_DFE1_GENES    = {"DFE_0448","DFE_0449","DFE_0450","DFE_0451"}
+_DFE2_GENES    = {"DFE_0461","DFE_0462","DFE_0463","DFE_0464","DFE_0465"}
+_MTR_GENES     = {"MtrA","MtrB_TIGR03509","MtrC_TIGR03507","MtoA","CymA"}
+_TRUSTED_LONE  = {"FutA1-iron_ABC_transporter_iron-binding-rep",
+                  "FutA2-iron_ABC_transporter_iron-binding-rep",
+                  "FutC-iron_ABC_transporter_ATPase-rep",
+                  "LbtU-LvtA-PiuA-PirA-RhtA","LbtU-LbtB-legiobactin_receptor",
+                  "LbtU_LbtB-legiobactin_receptor_2","IroC-salmochelin_transport-rep"}
+
+_SIDERO_TRANS_CATS = {"iron_aquisition-siderophore_transport_potential",
+                      "iron_aquisition-siderophore_transport",
+                      "iron_aquisition-heme_transport"}
+_SIDERO_SYNTH_CATS = {"iron_aquisition-siderophore_synthesis"}
+_IRON_TRANS_CATS   = {"iron_aquisition-iron_transport","iron_aquisition-heme_oxygenase"}
+_IRON_ACQ_ALL      = _SIDERO_TRANS_CATS | _SIDERO_SYNTH_CATS | _IRON_TRANS_CATS
+
+
+def filter_cluster_fegenie(cluster_rows, report_all_pats, all_results=False):
+    """
+    Exact port of FeGenie's operon context filtering logic.
+
+    FeGenie dispatches clusters to one rule handler based on which special
+    genes are present.  The key behavioral difference from a simple threshold:
+
+      - `break`-style rules  → drop the ENTIRE cluster when threshold not met
+      - `pass`-style rules   → drop only the FAILING ORFs, keep the rest
+
+    iron_transport/siderophore rules use the pass pattern, meaning that a gene
+    in one of those categories is silently skipped if its cluster doesn't have
+    enough co-occurring genes of the same category — but OTHER genes in the
+    cluster (e.g. iron_reduction genes) are kept.
+    """
+    if all_results:
+        return cluster_rows
+
+    cats  = {r["cat"]      for r in cluster_rows}
+    stems = {r["hmm_stem"] for r in cluster_rows}
+
+    # report_all bypass (metal_resistance-*, iron_storage …)
+    if all(_cm(c, report_all_pats) for c in cats):
+        return cluster_rows
+
+    # ── Helper counts ─────────────────────────────────────────────────────────
+    def n_unique_total():
+        return len(stems)
+
+    def n_unique_in_cats(cat_set):
+        return len({r["hmm_stem"] for r in cluster_rows if r["cat"] in cat_set})
+
+    def n_in_gene_set(gene_set):
+        return len({r["hmm_stem"] for r in cluster_rows if r["hmm_stem"] in gene_set})
+
+    # ── Dispatch: FLEET ───────────────────────────────────────────────────────
+    if stems & _FLEET_GENES:
+        n = n_in_gene_set(_FLEET_GENES)
+        non_fleet = [r for r in cluster_rows if r["hmm_stem"] not in _FLEET_GENES]
+        if n >= 5:
+            return cluster_rows
+        return non_fleet if non_fleet else []
+
+    # ── MAM ───────────────────────────────────────────────────────────────────
+    if stems & _MAM_GENES:
+        n = n_in_gene_set(_MAM_GENES)
+        non_mam = [r for r in cluster_rows if r["hmm_stem"] not in _MAM_GENES]
+        if n >= 5:
+            return cluster_rows
+        return non_mam if non_mam else []
+
+    # ── FoxABC ────────────────────────────────────────────────────────────────
+    if stems & _FOXABC_GENES:
+        n = n_in_gene_set(_FOXABC_GENES)
+        non_fox = [r for r in cluster_rows if r["hmm_stem"] not in _FOXABC_GENES]
+        if n >= 2:
+            return cluster_rows
+        return non_fox if non_fox else []
+
+    # ── FoxEYZ ────────────────────────────────────────────────────────────────
+    if stems & _FOXEYZ_GENES:
+        non_fox = [r for r in cluster_rows if r["hmm_stem"] not in _FOXEYZ_GENES]
+        if "FoxE" in stems:
+            return cluster_rows
+        return non_fox if non_fox else []
+
+    # ── DFE1 ─────────────────────────────────────────────────────────────────
+    if stems & _DFE1_GENES:
+        n = n_in_gene_set(_DFE1_GENES)
+        non_dfe = [r for r in cluster_rows if r["hmm_stem"] not in _DFE1_GENES]
+        if n >= 3:
+            return cluster_rows
+        return non_dfe if non_dfe else []
+
+    # ── DFE2 ─────────────────────────────────────────────────────────────────
+    if stems & _DFE2_GENES:
+        n = n_in_gene_set(_DFE2_GENES)
+        non_dfe = [r for r in cluster_rows if r["hmm_stem"] not in _DFE2_GENES]
+        if n >= 3:
+            return cluster_rows
+        return non_dfe if non_dfe else []
+
+    # ── Cyc1 ─────────────────────────────────────────────────────────────────
+    # (handled in second_pass, not here)
+
+    # ── Mtr / Mto disambiguation ──────────────────────────────────────────────
+    if "CymA" in stems:
+        if stems & {"MtrA","MtoA","MtrB_TIGR03509","MtrC_TIGR03507"}:
+            return _mtr(cluster_rows)
+        return [r for r in cluster_rows if r["hmm_stem"] != "CymA"] or []
+
+    if stems & _MTR_GENES:
+        return _mtr(cluster_rows)
+
+    # ── Iron acquisition categories (per-orf pass/break logic) ────────────────
+    if cats & _IRON_ACQ_ALL:
+        n_total = n_unique_total()
+        kept = []
+        skip_cluster = False
+
+        for r in cluster_rows:
+            cat = r["cat"]
+
+            if cat in _SIDERO_TRANS_CATS:
+                if n_total < 2:
+                    skip_cluster = True; break          # break → drop cluster
+                if n_unique_in_cats(_SIDERO_TRANS_CATS) < 2:
+                    pass                                 # pass  → skip this orf
+                else:
+                    kept.append(r)
+
+            elif cat in _SIDERO_SYNTH_CATS:
+                if n_total < 3:
+                    skip_cluster = True; break
+                if n_unique_in_cats(_SIDERO_SYNTH_CATS) < 3:
+                    pass
+                else:
+                    kept.append(r)
+
+            elif cat in _IRON_TRANS_CATS:
+                if n_total < 2:
+                    skip_cluster = True; break
+                if n_unique_in_cats(_IRON_TRANS_CATS) < 2:
+                    pass
+                else:
+                    kept.append(r)
+
+            else:
+                # Non-iron-aquisition gene co-occurring in the cluster — keep it
+                kept.append(r)
+
+        if skip_cluster:
+            return []
+
+        # FeGenie's "else" branch for iron_aquisition clusters:
+        # if no kept ORFs from the category checks but cluster has >1 unique HMM,
+        # check for trusted lone receptors
+        if not kept:
+            if n_total > 1 or (stems & _TRUSTED_LONE):
+                return cluster_rows
+            return []
+
+        return kept
+
+    # ── All other categories (iron_reduction, iron_oxidation, etc.) ───────────
+    # FeGenie reports these as long as the cluster has ≥1 orf — no additional rule
     return cluster_rows
 
-def filter_cluster(cluster_rows,operon_rules,report_all_patterns,all_results=False,
-                   contig_len=None,relaxed_threshold=10000):
+
+def filter_cluster_json(cluster_rows, operon_rules, report_all_pats,
+                        all_results=False, contig_len=None, relaxed_threshold=10000):
+    """
+    JSON-rule engine (for operon_rules.json users — model organisms).
+    Used when operon_rules.json is present in --hmm_dir.
+    """
     if all_results: return cluster_rows
     cats={r["cat"] for r in cluster_rows}
-    if all(_cm(c,report_all_patterns) for c in cats): return cluster_rows
+    if all(_cm(c,report_all_pats) for c in cats): return cluster_rows
     relaxed=(contig_len is not None and contig_len>0 and contig_len<relaxed_threshold)
+
+    def _ugi(rows,gs): return len({r["hmm_stem"] for r in rows if r["hmm_stem"] in gs})
+    def _ric(rows,cs): return [r for r in rows if r["cat"] in cs]
+
+    def _apply(rows,rd):
+        gs=set(rd.get("genes",[])); cs=set(rd.get("categories",[]))
+        on_fail=rd.get("on_fail","keep_all"); rt=rd["rule"]
+        sp={r["hmm_stem"] for r in rows}; cp={r["cat"] for r in rows}
+        if not ((gs and sp&gs) or (cs and cp&cs)): return rows
+        raw_min=rd.get("min_genes",1)
+        min_n=max(1,raw_min//2) if relaxed else raw_min
+        non_mbrs=[r for r in rows if r["hmm_stem"] not in gs]
+        if rt=="require_n_of":
+            if _ugi(rows,gs)>=min_n: return rows
+            if on_fail=="passthrough_non_members" and non_mbrs: return non_mbrs
+            return rows if on_fail=="keep_all" else []
+        if rt=="require_anchor":
+            anchor=rd.get("anchor","")
+            if anchor in {r["hmm_stem"] for r in rows if r["hmm_stem"] in gs}: return rows
+            if on_fail=="passthrough_non_members" and non_mbrs: return non_mbrs
+            return rows if on_fail=="keep_all" else []
+        if rt=="require_n_cat":
+            if len({r["hmm_stem"] for r in _ric(rows,cs)})>=min_n: return rows
+            return rows if on_fail=="keep_all" else []
+        if rt=="require_n_cat_or_lone_trusted":
+            tl=set(rd.get("trusted_lone",[])); cat_m=_ric(rows,cs)
+            uq={r["hmm_stem"] for r in cat_m}
+            if len(uq)>1 or tl&sp or len(uq)>=min_n: return rows
+            return rows if on_fail=="keep_all" else []
+        if rt=="mtr_disambiguation": return _mtr(rows)
+        return rows
+
     rows=cluster_rows
     for rd in operon_rules:
-        rows=apply_rule(rows,rd,relaxed=relaxed)
+        rows=_apply(rows,rd)
         if not rows: return []
     return rows
+
 
 FE_REDOX={"iron_reduction","iron_oxidation"}
 
@@ -393,6 +575,363 @@ def second_pass(cluster_rows,g2c,seq_dict,all_results=False):
             continue
         kept.append(r)
     return kept
+
+
+# ── UniOP integration ─────────────────────────────────────────────────────────
+# ── UniOP integration ─────────────────────────────────────────────────────────
+def _is_prodigal_faa(faa_path):
+    """
+    Return True if the FAA file has Prodigal-format headers with embedded
+    coordinates: >orf_name # start # end # strand # ID=...
+    UniOP can parse these directly with -a.
+    Bakta/NCBI headers have no coordinates → need FNA input (-i).
+    """
+    with open(faa_path) as fh:
+        for line in fh:
+            if line.startswith(">"):
+                # Prodigal header: >ID # start # end # strand # ...
+                parts = line.split("#")
+                if len(parts) >= 4:
+                    try:
+                        int(parts[1].strip())  # start
+                        int(parts[2].strip())  # end
+                        return True
+                    except ValueError:
+                        pass
+                return False
+    return False
+
+
+def run_uniop(faa_files, fna_dir, out_dir, uniop_path, fna_ext="fna"):
+    """
+    Run UniOP (https://github.com/hongsua/UniOP) on each genome.
+
+    UniOP interface:
+      python UniOP -a input.faa    # when FAA has Prodigal-format coordinate headers
+      python UniOP -i input.fna    # when starting from nucleotide sequence
+      python UniOP -t output_dir   # specify output directory
+
+    Output files (fixed names, one per run):
+      uniop.operon   — one operon per line: orf1,orf2,...
+      uniop.pred     — pair predictions:    orf_i <TAB> orf_j <TAB> probability
+
+    Because UniOP always writes to fixed filenames, we run each genome in its
+    own temporary subdirectory to avoid collisions.
+
+    Returns dict: genome_faa_name → {orf_id → operon_id}
+    """
+    uniop_dir = out_dir / "_uniop"
+    uniop_dir.mkdir(exist_ok=True)
+
+    genome_operon_map = {}
+
+    for faa in faa_files:
+        stem     = faa.stem
+        work_dir = uniop_dir / stem
+        work_dir.mkdir(exist_ok=True)
+
+        operon_file = work_dir / "uniop.operon"
+        pred_file   = work_dir / "uniop.pred"
+
+        # Skip if already computed (caching)
+        if operon_file.exists():
+            print(f"  [INFO] UniOP cache hit for {stem}")
+        else:
+            # Choose input mode: FAA (Prodigal headers) or FNA
+            use_faa = _is_prodigal_faa(str(faa))
+            if use_faa:
+                cmd = ["python", str(uniop_path), "-a", str(faa), "-t", str(work_dir)]
+            else:
+                # Need FNA file
+                fna_path = None
+                if fna_dir:
+                    for ext in [fna_ext, "fna", "fasta", "fa"]:
+                        candidate = Path(fna_dir) / f"{stem}.{ext}"
+                        if candidate.exists():
+                            fna_path = candidate
+                            break
+                if fna_path is None:
+                    print(f"  [WARN] UniOP: no Prodigal headers in {faa.name} and no "
+                          f"FNA found for {stem}. Skipping.", file=sys.stderr)
+                    continue
+                cmd = ["python", str(uniop_path), "-i", str(fna_path), "-t", str(work_dir)]
+
+            r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(work_dir))
+            if r.returncode != 0:
+                print(f"  [WARN] UniOP failed for {stem}: {r.stderr[:200]}",
+                      file=sys.stderr)
+                continue
+
+        # Parse uniop.operon (authoritative: full operons)
+        # Format: one operon per line, comma-separated orf names
+        # e.g.   orf_1_1,orf_1_2,orf_1_3
+        orf_to_op = {}
+        if operon_file.exists():
+            with open(operon_file) as fh:
+                for op_idx, line in enumerate(fh):
+                    line = line.rstrip()
+                    if not line or line.startswith("#"):
+                        continue
+                    op_id = f"{stem}_OP{op_idx + 1:04d}"
+                    for orf in line.split(","):
+                        orf = orf.strip()
+                        if orf:
+                            orf_to_op[orf] = op_id
+
+        # Fall back to uniop.pred (pair probabilities) if operon file is empty
+        if not orf_to_op and pred_file.exists():
+            # Format: orf_i <TAB> orf_j <TAB> probability
+            # Assign same operon ID to pairs with prob > 0.5 using union-find
+            parent = {}
+            def _find(x):
+                while parent.get(x, x) != x:
+                    parent[x] = parent.get(parent.get(x, x), x)
+                    x = parent.get(x, x)
+                return x
+            def _union(a, b):
+                ra, rb = _find(a), _find(b)
+                if ra != rb:
+                    parent[rb] = ra
+
+            with open(pred_file) as fh:
+                for line in fh:
+                    line = line.rstrip()
+                    if not line or line.startswith("#"):
+                        continue
+                    parts = line.split("\t")
+                    if len(parts) >= 3:
+                        try:
+                            prob = float(parts[2])
+                            if prob > 0.5:
+                                _union(parts[0].strip(), parts[1].strip())
+                                parent.setdefault(parts[0].strip(), parts[0].strip())
+                                parent.setdefault(parts[1].strip(), parts[1].strip())
+                        except (ValueError, IndexError):
+                            pass
+
+            # Assign operon IDs from connected components
+            comp_ids = {}
+            op_counter = 1
+            for orf in list(parent.keys()):
+                root = _find(orf)
+                if root not in comp_ids:
+                    comp_ids[root] = f"{stem}_OP{op_counter:04d}"
+                    op_counter += 1
+                orf_to_op[orf] = comp_ids[root]
+
+        n_operons = len(set(orf_to_op.values()))
+        n_genes   = len(orf_to_op)
+        print(f"  [INFO] {stem}: {n_operons} operons, {n_genes} genes assigned")
+
+        genome_operon_map[faa.name] = orf_to_op
+        genome_operon_map[stem]     = orf_to_op
+
+    return genome_operon_map
+
+
+# ── Bakta ↔ Prodigal coordinate mapping ──────────────────────────────────────
+def parse_gff_coords(gff_path, source_hint=""):
+    """
+    Parse a GFF/GFF3 file and return:
+      dict: contig → [(start, end, strand, gene_id)]
+
+    Works with both Prodigal GFF (ID=contig_1_5) and Bakta GFF3
+    (ID=AMXMAG_00053). source_hint is only used for logging.
+    """
+    coords = defaultdict(list)
+    with open(gff_path) as fh:
+        for line in fh:
+            if line.startswith("#"):
+                continue
+            parts = line.rstrip().split("\t")
+            if len(parts) < 9 or parts[2] != "CDS":
+                continue
+            contig = parts[0]
+            try:
+                start  = int(parts[3])
+                end    = int(parts[4])
+            except ValueError:
+                continue
+            strand = parts[6]
+            attrs  = parts[8]
+            # Extract ID from attributes
+            gene_id = None
+            for attr in attrs.split(";"):
+                attr = attr.strip()
+                if attr.startswith("ID="):
+                    gene_id = attr[3:].strip()
+                    break
+                if attr.startswith("locus_tag=") and gene_id is None:
+                    gene_id = attr[10:].strip()
+            if gene_id:
+                coords[contig].append((start, end, strand, gene_id))
+    return dict(coords)
+
+
+def build_prodigal_bakta_map(bakta_gff_dir, prodigal_gff_dir, faa_files,
+                              coord_tol=3):
+    """
+    Build a mapping: genome → {prodigal_orf_id → bakta_gene_id}
+    by matching CDS entries on (contig, start, end, strand).
+
+    coord_tol: tolerance in bp for coordinate matching (Bakta and Prodigal
+    sometimes differ by 1-3 bp at gene boundaries due to post-processing).
+
+    For each FAA file, looks for:
+      - Bakta GFF3:    bakta_gff_dir / stem.gff3
+      - Prodigal GFF:  prodigal_gff_dir / stem.gff  (or .gff3, .prodigal.gff)
+    """
+    prodigal_to_bakta = {}   # genome_name → {prodigal_id → bakta_id}
+    stats = {"matched": 0, "unmatched_prodigal": 0, "unmatched_bakta": 0}
+
+    for faa in faa_files:
+        stem   = faa.stem
+        genome = faa.name
+
+        # Find Bakta GFF3
+        bakta_gff = None
+        for ext in (".gff3", ".gff"):
+            c = Path(bakta_gff_dir) / (stem + ext)
+            if c.exists():
+                bakta_gff = c
+                break
+        if bakta_gff is None:
+            continue
+
+        # Find Prodigal GFF
+        prodigal_gff = None
+        for ext in (".gff", ".gff3", ".prodigal.gff"):
+            c = Path(prodigal_gff_dir) / (stem + ext)
+            if c.exists():
+                prodigal_gff = c
+                break
+        if prodigal_gff is None:
+            continue
+
+        bakta_coords    = parse_gff_coords(str(bakta_gff),    "bakta")
+        prodigal_coords = parse_gff_coords(str(prodigal_gff), "prodigal")
+
+        # Build index: contig → {(start, end, strand) → bakta_id}
+        bakta_index = defaultdict(dict)
+        for contig, entries in bakta_coords.items():
+            for start, end, strand, gene_id in entries:
+                bakta_index[contig][(start, end, strand)] = gene_id
+
+        # Match Prodigal ORFs to Bakta genes
+        orf_map = {}
+        for contig, entries in prodigal_coords.items():
+            b_idx = bakta_index.get(contig, {})
+            for start, end, strand, prod_id in entries:
+                # Exact match first
+                key = (start, end, strand)
+                if key in b_idx:
+                    orf_map[prod_id] = b_idx[key]
+                    stats["matched"] += 1
+                    continue
+                # Fuzzy match within coord_tol bp
+                found = None
+                for (bs, be, bst), bid in b_idx.items():
+                    if (bst == strand and
+                            abs(bs - start) <= coord_tol and
+                            abs(be - end)   <= coord_tol):
+                        found = bid
+                        break
+                if found:
+                    orf_map[prod_id] = found
+                    stats["matched"] += 1
+                else:
+                    stats["unmatched_prodigal"] += 1
+
+        prodigal_to_bakta[genome] = orf_map
+
+    total = stats["matched"] + stats["unmatched_prodigal"]
+    if total > 0:
+        pct = stats["matched"] / total * 100
+        print(f"[INFO] Prodigal↔Bakta mapping: "
+              f"{stats['matched']}/{total} ORFs matched ({pct:.1f}%)")
+        if stats["unmatched_prodigal"] > 0:
+            print(f"       {stats['unmatched_prodigal']} Prodigal ORFs had no "
+                  f"matching Bakta gene (will show ORF name in Bakta column)")
+
+    return prodigal_to_bakta
+
+
+def write_operon_structure(path, final_rows, genome_operon_map,
+                           prodigal_to_bakta=None):
+    """
+    OperonStructure_geneCall.tsv — HMM hits linked to UniOP operon predictions.
+    If prodigal_to_bakta provided, adds bakta_gene_id column.
+    """
+    op_to_orfs = defaultdict(list)
+    for r in final_rows:
+        op_map = genome_operon_map.get(r["genome"], {})
+        op_id  = op_map.get(r["orf"], f"singleton_{r['genome']}_{r['orf']}")
+        op_to_orfs[op_id].append(r["orf"])
+
+    use_bakta = bool(prodigal_to_bakta)
+    fields = ["operon_id","genome","contig","orf","gene","category",
+              "hmm_stem","bitscore","e_value","unioperon_members"]
+    if use_bakta:
+        fields.insert(fields.index("orf") + 1, "bakta_gene_id")
+
+    with open(path, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, delimiter="\t",
+                           extrasaction="ignore")
+        w.writeheader()
+        for r in final_rows:
+            genome = r["genome"]; orf = r["orf"]
+            op_map = genome_operon_map.get(genome, {})
+            op_id  = op_map.get(orf, f"singleton_{genome}_{orf}")
+            members = [o for o in op_to_orfs[op_id] if o != orf]
+            row = {
+                "operon_id":         op_id,
+                "genome":            genome,
+                "contig":            r["contig"],
+                "orf":               orf,
+                "gene":              r["gene_name"],
+                "category":          r["cat"],
+                "hmm_stem":          r["hmm_stem"],
+                "bitscore":          f"{r['bitscore']:.1f}",
+                "e_value":           f"{r['evalue']:.2e}",
+                "unioperon_members": ",".join(members) if members else "",
+            }
+            if use_bakta:
+                row["bakta_gene_id"] = prodigal_to_bakta.get(genome, {}).get(orf, orf)
+            w.writerow(row)
+
+
+# ── Anvi'o output ─────────────────────────────────────────────────────────────
+def write_anvio_functions(path, final_rows, prodigal_to_bakta=None):
+    """
+    Functions table for anvi-import-functions (tab-delimited):
+      gene_callers_id    source    accession    function    e_value
+
+    If prodigal_to_bakta is provided (Bakta external gene calls workflow),
+    gene_callers_id contains Bakta gene IDs (e.g. AMXMAG_00053) which map
+    directly to Anvi'o gene_callers_id when the db was built with
+    anvi-gen-contigs-database --external-gene-calls from Bakta output.
+
+    Without Bakta mapping, contains Prodigal ORF names — map to integer IDs
+    via anvi-export-gene-calls before importing.
+    """
+    use_bakta = bool(prodigal_to_bakta)
+    with open(path, "w", newline="") as fh:
+        w = csv.writer(fh, delimiter="\t")
+        w.writerow(["gene_callers_id", "source", "accession", "function", "e_value"])
+        seen = set()
+        for r in final_rows:
+            orf = r["orf"]; genome = r["genome"]
+            if orf in seen: continue
+            seen.add(orf)
+            if use_bakta:
+                caller = prodigal_to_bakta.get(genome, {}).get(orf, orf)
+            else:
+                caller = orf
+            w.writerow([caller, "MetalGenie-Evo", r["hmm_stem"],
+                        f"{r['gene_name']} [{r['cat']}]",
+                        f"{r['evalue']:.2e}"])
+
+
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
 def compute_coverage_from_bam(bam_path,out_dir,label):
@@ -586,6 +1125,26 @@ def main():
     p.add_argument("--depths",help="TSV: genome<TAB>depth_path")
     p.add_argument("--norm_coverage",action="store_true",help="TPM-normalise coverage heatmap")
     p.add_argument("--keep_tblout",action="store_true")
+    # ── Operon prediction (UniOP) ─────────────────────────────────────────────
+    p.add_argument("--operon_prediction",action="store_true",
+                   help="Run UniOP operon prediction and produce "
+                        "OperonStructure_geneCall.tsv. Requires --fna_dir "
+                        "(or nucleotide files) and UniOP installed.")
+    p.add_argument("--uniop_path",default="uniop",
+                   help="Path to UniOP executable (default: 'uniop', assumed in PATH)")
+    # ── Anvi'o output ─────────────────────────────────────────────────────────
+    p.add_argument("--anvio",action="store_true",
+                   help="Write MetalGenie-Evo-anvio-functions.tsv, compatible with "
+                        "anvi-import-functions. gene_callers_id column contains ORF "
+                        "names — map to integer IDs from your Anvi'o contigs database "
+                        "before importing (see README).")
+    p.add_argument("--bakta_gff_dir",
+                   help="Directory of Bakta GFF3 files. When provided together with "
+                        "--fna_dir, MetalGenie-Evo runs Prodigal internally for HMM "
+                        "search and UniOP, then maps Prodigal ORF names back to Bakta "
+                        "gene IDs via coordinate matching. The --anvio output will use "
+                        "Bakta IDs directly, compatible with Anvi'o databases built "
+                        "from Bakta external gene calls.")
     args=p.parse_args()
 
     out_dir=Path(args.out); out_dir.mkdir(parents=True,exist_ok=True)
@@ -617,7 +1176,7 @@ def main():
     if not cat_hmms: sys.exit(f"[ERROR] No HMM dirs in {args.hmm_dir}")
     total_hmms=sum(len(v) for v in cat_hmms.values())
     print(f"[INFO] {total_hmms} HMMs across {len(cat_hmms)} categories")
-    operon_rules,report_all_pats=load_operon_rules(args.hmm_dir)
+    operon_rules,report_all_pats,json_mode=load_operon_rules(args.hmm_dir)
 
     contig_lengths={}
     if args.min_contig_len>0 or args.relaxed_operons or args.norm_coverage:
@@ -674,8 +1233,13 @@ def main():
             min_clen=(min(r["contig_len"] for r in cluster_rows if r["contig_len"]>0)
                       if any(r["contig_len"]>0 for r in cluster_rows) else None)
             rel_thr=args.relaxed_threshold if args.relaxed_operons else 0
-            filtered=filter_cluster(cluster_rows,operon_rules,report_all_pats,
-                                     args.all_results,contig_len=min_clen,relaxed_threshold=rel_thr)
+            if json_mode:
+                filtered=filter_cluster_json(cluster_rows,operon_rules,report_all_pats,
+                                              args.all_results,contig_len=min_clen,
+                                              relaxed_threshold=rel_thr)
+            else:
+                filtered=filter_cluster_fegenie(cluster_rows,report_all_pats,
+                                                 args.all_results)
             filtered=second_pass(filtered,h2c,seq_dict,args.all_results)
             for r in filtered:
                 r["gene_name"]=gene_map.get(r["hmm_stem"],r["hmm_stem"])
@@ -716,6 +1280,60 @@ def main():
 
     if not args.keep_tblout: shutil.rmtree(tblout_dir,ignore_errors=True)
     else: print(f"[INFO] tblout cache at {tblout_dir}/")
+
+    # ── UniOP operon prediction (optional) ────────────────────────────────────
+    genome_operon_map  = {}
+    prodigal_to_bakta  = {}
+
+    if args.operon_prediction:
+        fna_dir_for_uniop = Path(args.fna_dir) if args.fna_dir else None
+        print(f"[INFO] Running UniOP on {len(faa_files)} genomes…")
+        print(f"       UniOP path: {args.uniop_path}")
+        if fna_dir_for_uniop is None:
+            print("       No --fna_dir: will use FAA files directly "
+                  "(requires Prodigal-format headers)")
+        genome_operon_map = run_uniop(
+            faa_files,
+            fna_dir    = fna_dir_for_uniop,
+            out_dir    = out_dir,
+            uniop_path = args.uniop_path,
+            fna_ext    = args.fna_ext if args.fna_dir else "fna",
+        )
+        if genome_operon_map and args.bakta_gff_dir and gff_dir_path:
+            print("[INFO] Building Prodigal↔Bakta coordinate map…")
+            prodigal_to_bakta = build_prodigal_bakta_map(
+                args.bakta_gff_dir,
+                str(gff_dir_path),
+                faa_files)
+            op_path = out_dir / "MetalGenie-Evo-OperonStructure.tsv"
+            print(f"[INFO] Writing {op_path.name}…")
+            write_operon_structure(str(op_path), final_rows, genome_operon_map,
+                                   prodigal_to_bakta=prodigal_to_bakta)
+        else:
+            print("[WARN] UniOP produced no predictions.", file=sys.stderr)
+
+    # ── Bakta ↔ Prodigal mapping (without UniOP) ──────────────────────────────
+    # Build the map even if --operon_prediction was not requested,
+    # so --anvio can use Bakta IDs directly.
+    if args.bakta_gff_dir and not args.operon_prediction:
+        if gff_dir_path and args.fna_dir:
+            print("[INFO] Building Prodigal↔Bakta coordinate map…")
+            prodigal_to_bakta = build_prodigal_bakta_map(
+                args.bakta_gff_dir,
+                str(gff_dir_path),
+                faa_files)
+
+    # ── Anvi'o functions output (optional) ───────────────────────────────────
+    if args.anvio:
+        anvio_path = out_dir / "MetalGenie-Evo-anvio-functions.tsv"
+        print(f"[INFO] Writing {anvio_path.name}…")
+        write_anvio_functions(str(anvio_path), final_rows,
+                              prodigal_to_bakta=prodigal_to_bakta)
+        id_note = ("Bakta gene IDs" if prodigal_to_bakta
+                   else "Prodigal ORF names — map to int IDs before import")
+        print(f"       gene_callers_id: {id_note}")
+        print(f"       Import with: anvi-import-functions -c CONTIGS.db "
+              f"-i {anvio_path.name} -p MetalGenie-Evo")
 
     n_hit=len({r["genome"] for r in final_rows}); cc=defaultdict(int)
     for r in final_rows: cc[r["cat"]]+=1
