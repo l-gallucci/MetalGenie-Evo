@@ -1057,7 +1057,8 @@ def write_summary(path,rows):
         prev=None
         for r in rows:
             if prev is not None and r["cluster_id"]!=prev: fh.write("#,#,#,#,#,#,#,#,#\n")
-            fh.write(f"{r['cat']},{r['genome']},{r['contig']},{r['orf']},"
+            orf_id = r.get("bakta_id", r["orf"])
+            fh.write(f"{r['cat']},{r['genome']},{r['contig']},{orf_id},"
                      f"{r['gene_name']},{r['bitscore']:.1f},{r['cutoff']},"
                      f"{r['cluster_id']},{r['heme_motifs']},{r['sequence']}\n")
             prev=r["cluster_id"]
@@ -1068,7 +1069,8 @@ def write_gene_summary(path,rows):
         prev=None
         for r in rows:
             if prev is not None and r["cluster_id"]!=prev: fh.write("#,#,#,#,#,#,#\n")
-            fh.write(f"{r['cat']},{r['genome']},{r['contig']},{r['orf']},"
+            orf_id = r.get("bakta_id", r["orf"])
+            fh.write(f"{r['cat']},{r['genome']},{r['contig']},{orf_id},"
                      f"{r['gene_name']},{r['bitscore']:.1f},{r['cluster_id']}\n")
             prev=r["cluster_id"]
 
@@ -1080,7 +1082,8 @@ def write_long_format(path,rows):
         w.writeheader()
         for r in rows:
             w.writerow({"category":r["cat"],"genome":r["genome"],"contig":r["contig"],
-                        "orf":r["orf"],"gene":r["gene_name"],
+                        "orf":r.get("bakta_id", r["orf"]),
+                        "gene":r["gene_name"],
                         "bitscore":f"{r['bitscore']:.1f}","bitscore_cutoff":r["cutoff"],
                         "cluster_id":r["cluster_id"],"heme_c_motifs":r["heme_motifs"],
                         "contig_len":r.get("contig_len","")})
@@ -1277,6 +1280,35 @@ def main():
     norm_dict={faa.name:len(seq_dict.get(faa.name,{})) for faa in faa_files} if args.norm else None
     all_genomes=sorted(f.name for f in faa_files)
 
+    # ── Bakta ↔ Prodigal coordinate mapping ──────────────────────────────────
+    # Built BEFORE writing outputs so all files use Bakta IDs when available.
+    prodigal_to_bakta = {}
+    if args.bakta_gff_dir:
+        if gff_dir_path:
+            print("[INFO] Building Prodigal↔Bakta coordinate map…")
+            prodigal_to_bakta = build_prodigal_bakta_map(
+                args.bakta_gff_dir,
+                str(gff_dir_path),
+                faa_files)
+            if not prodigal_to_bakta:
+                print("[WARN] Prodigal↔Bakta mapping returned empty. "
+                      "Check that --bakta_gff_dir contains .gff3 files whose "
+                      "basenames match your genome FAA files.", file=sys.stderr)
+        else:
+            print("[WARN] --bakta_gff_dir requires --fna_dir so that Prodigal GFF "
+                  "files are available for coordinate matching. "
+                  "Bakta mapping skipped.", file=sys.stderr)
+
+    # Add bakta_id field to every row (falls back to prodigal orf name if no match)
+    if prodigal_to_bakta:
+        for r in final_rows:
+            b_map = prodigal_to_bakta.get(r["genome"], {})
+            r["bakta_id"] = b_map.get(r["orf"], r["orf"])
+        print(f"[INFO] Bakta IDs applied to all output files")
+    else:
+        for r in final_rows:
+            r["bakta_id"] = r["orf"]   # same as orf when no mapping
+
     for path,fn in [(out_dir/"MetalGenie-Evo-summary.csv",write_summary),
                     (out_dir/"MetalGenie-Evo-geneSummary-clusters.csv",write_gene_summary),
                     (out_dir/"MetalGenie-Evo-results-long.tsv",write_long_format)]:
@@ -1304,29 +1336,6 @@ def main():
 
     if not args.keep_tblout: shutil.rmtree(tblout_dir,ignore_errors=True)
     else: print(f"[INFO] tblout cache at {tblout_dir}/")
-
-    if not args.keep_tblout: shutil.rmtree(tblout_dir,ignore_errors=True)
-    else: print(f"[INFO] tblout cache at {tblout_dir}/")
-
-    # ── Bakta ↔ Prodigal coordinate mapping ──────────────────────────────────
-    # Always built when --bakta_gff_dir is provided, independent of UniOP.
-    prodigal_to_bakta = {}
-    if args.bakta_gff_dir:
-        if gff_dir_path:
-            print("[INFO] Building Prodigal↔Bakta coordinate map…")
-            prodigal_to_bakta = build_prodigal_bakta_map(
-                args.bakta_gff_dir,
-                str(gff_dir_path),
-                faa_files)
-            if not prodigal_to_bakta:
-                print("[WARN] Prodigal↔Bakta mapping returned empty. "
-                      "Check that --bakta_gff_dir contains .gff3 files whose "
-                      "basenames match your genome FAA files.", file=sys.stderr)
-        else:
-            print("[WARN] --bakta_gff_dir requires --fna_dir so that Prodigal GFF "
-                  "files are available for coordinate matching. "
-                  "Bakta mapping skipped — Anvi'o output will use Prodigal ORF names.",
-                  file=sys.stderr)
 
     # ── UniOP operon prediction (optional) ────────────────────────────────────
     genome_operon_map = {}
