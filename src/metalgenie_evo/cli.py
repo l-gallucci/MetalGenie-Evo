@@ -603,50 +603,136 @@ def second_pass(cluster_rows,g2c,seq_dict,all_results=False):
 
 # ── UniOP integration ─────────────────────────────────────────────────────────
 # ── UniOP integration ─────────────────────────────────────────────────────────
-def _is_prodigal_faa(faa_path):
+def _parse_uniop_faa_index(faa_path):
     """
-    Return True if the FAA file has Prodigal-format headers with embedded
-    coordinates: >orf_name # start # end # strand # ID=...
-    UniOP can parse these directly with -a.
-    Bakta/NCBI headers have no coordinates → need FNA input (-i).
+    Build dict: 1-based integer index → prodigal_orf_name
+    from the FAA file produced by UniOP's internal Prodigal run.
     """
+    idx_to_orf = {}
+    idx = 0
     with open(faa_path) as fh:
         for line in fh:
             if line.startswith(">"):
-                # Prodigal header: >ID # start # end # strand # ...
-                parts = line.split("#")
-                if len(parts) >= 4:
-                    try:
-                        int(parts[1].strip())  # start
-                        int(parts[2].strip())  # end
-                        return True
-                    except ValueError:
-                        pass
-                return False
-    return False
+                idx += 1
+                orf_id = line[1:].split()[0].strip()
+                idx_to_orf[idx] = orf_id
+    return idx_to_orf
+
+
+def _parse_uniop_operon(operon_path, idx_to_orf):
+    """
+    Parse uniop.operon CSV:
+      idx_genes,idx_op
+      "[np.int64(1), np.int64(2), np.int64(3)]",0
+
+    Returns dict: orf_name → operon_id (string)
+    """
+    import re as _re
+    orf_to_op = {}
+    try:
+        with open(operon_path) as fh:
+            header = fh.readline()   # skip header
+            for line in fh:
+                line = line.rstrip()
+                if not line:
+                    continue
+                # Split on last comma to get idx_op
+                last_comma = line.rfind(",")
+                if last_comma < 0:
+                    continue
+                idx_genes_str = line[:last_comma].strip().strip('"')
+                idx_op_str    = line[last_comma+1:].strip()
+                # Extract all integers from the numpy array string
+                # e.g. "[np.int64(1), np.int64(2), np.int64(3)]"
+                indices = [int(x) for x in _re.findall(r'\d+', idx_genes_str)]
+                op_id = f"OP{int(idx_op_str):04d}"
+                for idx in indices:
+                    orf = idx_to_orf.get(idx)
+                    if orf:
+                        orf_to_op[orf] = op_id
+    except Exception as e:
+        print(f"  [WARN] Could not parse uniop.operon: {e}", file=sys.stderr)
+    return orf_to_op
+
+
+def _parse_uniop_pred(pred_path, idx_to_orf, threshold=0.5):
+    """
+    Parse uniop.pred (fallback when uniop.operon is empty):
+      Gene A  Gene B  Prediction   (tab-separated, some rows have empty Prediction)
+
+    Uses union-find to build connected components of pairs with prob > threshold.
+    Returns dict: orf_name → operon_id
+    """
+    import re as _re
+    parent = {}
+
+    def _find(x):
+        root = x
+        while parent.get(root, root) != root:
+            root = parent.get(root, root)
+        while x != root:
+            parent[x], x = root, parent.get(x, x)
+        return root
+
+    def _union(a, b):
+        ra, rb = _find(a), _find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    try:
+        with open(pred_path) as fh:
+            next(fh, None)  # skip header "Gene A  Gene B  Prediction"
+            for line in fh:
+                parts = line.rstrip().split("\t")
+                if len(parts) < 3 or not parts[2].strip():
+                    continue
+                try:
+                    ia   = int(parts[0].strip())
+                    ib   = int(parts[1].strip())
+                    prob = float(parts[2].strip())
+                except ValueError:
+                    continue
+                if prob >= threshold:
+                    oa = idx_to_orf.get(ia)
+                    ob = idx_to_orf.get(ib)
+                    if oa and ob:
+                        parent.setdefault(oa, oa)
+                        parent.setdefault(ob, ob)
+                        _union(oa, ob)
+    except Exception as e:
+        print(f"  [WARN] Could not parse uniop.pred: {e}", file=sys.stderr)
+        return {}
+
+    # Assign operon IDs from connected components
+    comp_ids  = {}
+    op_counter = 0
+    orf_to_op  = {}
+    for orf in list(parent.keys()):
+        root = _find(orf)
+        if root not in comp_ids:
+            comp_ids[root] = f"OP{op_counter:04d}"
+            op_counter += 1
+        orf_to_op[orf] = comp_ids[root]
+    return orf_to_op
 
 
 def run_uniop(faa_files, fna_dir, out_dir, uniop_path, fna_ext="fna"):
     """
-    Run UniOP (https://github.com/hongsua/UniOP) on each genome.
+    Run UniOP on each genome using the FNA file (-i mode, since Bakta FAA
+    headers have no coordinate information).
 
-    UniOP interface:
-      python UniOP -a input.faa    # when FAA has Prodigal-format coordinate headers
-      python UniOP -i input.fna    # when starting from nucleotide sequence
-      python UniOP -t output_dir   # specify output directory
+    UniOP output format:
+      uniop.operon  — CSV: idx_genes (numpy array string), idx_op
+      uniop.pred    — TSV: Gene_A_idx  Gene_B_idx  probability
 
-    Output files (fixed names, one per run):
-      uniop.operon   — one operon per line: orf1,orf2,...
-      uniop.pred     — pair predictions:    orf_i <TAB> orf_j <TAB> probability
+    Both use 1-based integer indices into the FAA produced by UniOP's internal
+    Prodigal run. We parse the FAA to build idx → prodigal_orf_name, then use
+    the existing prodigal_to_bakta map (built separately) for the final linking.
 
-    Because UniOP always writes to fixed filenames, we run each genome in its
-    own temporary subdirectory to avoid collisions.
-
-    Returns dict: genome_faa_name → {orf_id → operon_id}
+    Returns dict: genome_faa_name → {prodigal_orf_id → operon_id}
     """
     uniop_dir = out_dir / "_uniop"
     uniop_dir.mkdir(exist_ok=True)
-
     genome_operon_map = {}
 
     for faa in faa_files:
@@ -656,97 +742,60 @@ def run_uniop(faa_files, fna_dir, out_dir, uniop_path, fna_ext="fna"):
 
         operon_file = work_dir / "uniop.operon"
         pred_file   = work_dir / "uniop.pred"
+        # UniOP saves the FAA it generates with the same stem as the input FNA
+        uniop_faa   = work_dir / f"{stem}.faa"
 
-        # Skip if already computed (caching)
-        if operon_file.exists():
+        if operon_file.exists() and uniop_faa.exists():
             print(f"  [INFO] UniOP cache hit for {stem}")
         else:
-            # Choose input mode: FAA (Prodigal headers) or FNA
-            use_faa = _is_prodigal_faa(str(faa))
-            if use_faa:
-                cmd = ["python", str(uniop_path), "-a", str(faa), "-t", str(work_dir)]
-            else:
-                # Need FNA file
-                fna_path = None
-                if fna_dir:
-                    for ext in [fna_ext, "fna", "fasta", "fa"]:
-                        candidate = Path(fna_dir) / f"{stem}.{ext}"
-                        if candidate.exists():
-                            fna_path = candidate
-                            break
-                if fna_path is None:
-                    print(f"  [WARN] UniOP: no Prodigal headers in {faa.name} and no "
-                          f"FNA found for {stem}. Skipping.", file=sys.stderr)
-                    continue
-                cmd = ["python", str(uniop_path), "-i", str(fna_path), "-t", str(work_dir)]
-
-            r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(work_dir))
-            if r.returncode != 0:
-                print(f"  [WARN] UniOP failed for {stem}: {r.stderr[:200]}",
+            # Always use -i mode (FNA) — Bakta FAA headers lack coordinates
+            fna_path = None
+            if fna_dir:
+                for ext in [fna_ext, "fna", "fasta", "fa"]:
+                    candidate = Path(fna_dir) / f"{stem}.{ext}"
+                    if candidate.exists():
+                        fna_path = candidate
+                        break
+            if fna_path is None:
+                print(f"  [WARN] UniOP: no FNA found for {stem} — skipping.",
                       file=sys.stderr)
                 continue
 
-        # Parse uniop.operon (authoritative: full operons)
-        # Format: one operon per line, comma-separated orf names
-        # e.g.   orf_1_1,orf_1_2,orf_1_3
+            cmd = ["python3", str(uniop_path),
+                   "-i", str(fna_path),
+                   "-t", str(work_dir)]
+            r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(work_dir))
+            if r.returncode != 0:
+                print(f"  [WARN] UniOP failed for {stem}:\n{r.stderr[:400]}",
+                      file=sys.stderr)
+                continue
+
+        # Find the FAA produced by UniOP's Prodigal run
+        # UniOP names it after the FNA stem, placed in the work_dir
+        faa_candidates = list(work_dir.glob("*.faa"))
+        if not faa_candidates:
+            print(f"  [WARN] UniOP: no FAA found in {work_dir} for {stem}",
+                  file=sys.stderr)
+            continue
+        uniop_faa = faa_candidates[0]
+
+        # Build index → prodigal orf name
+        idx_to_orf = _parse_uniop_faa_index(str(uniop_faa))
+
+        # Parse operon predictions
         orf_to_op = {}
         if operon_file.exists():
-            with open(operon_file) as fh:
-                for op_idx, line in enumerate(fh):
-                    line = line.rstrip()
-                    if not line or line.startswith("#"):
-                        continue
-                    op_id = f"{stem}_OP{op_idx + 1:04d}"
-                    for orf in line.split(","):
-                        orf = orf.strip()
-                        if orf:
-                            orf_to_op[orf] = op_id
+            orf_to_op = _parse_uniop_operon(str(operon_file), idx_to_orf)
 
-        # Fall back to uniop.pred (pair probabilities) if operon file is empty
+        # Fallback to pairwise predictions if operon file is empty
         if not orf_to_op and pred_file.exists():
-            # Format: orf_i <TAB> orf_j <TAB> probability
-            # Assign same operon ID to pairs with prob > 0.5 using union-find
-            parent = {}
-            def _find(x):
-                while parent.get(x, x) != x:
-                    parent[x] = parent.get(parent.get(x, x), x)
-                    x = parent.get(x, x)
-                return x
-            def _union(a, b):
-                ra, rb = _find(a), _find(b)
-                if ra != rb:
-                    parent[rb] = ra
-
-            with open(pred_file) as fh:
-                for line in fh:
-                    line = line.rstrip()
-                    if not line or line.startswith("#"):
-                        continue
-                    parts = line.split("\t")
-                    if len(parts) >= 3:
-                        try:
-                            prob = float(parts[2])
-                            if prob > 0.5:
-                                _union(parts[0].strip(), parts[1].strip())
-                                parent.setdefault(parts[0].strip(), parts[0].strip())
-                                parent.setdefault(parts[1].strip(), parts[1].strip())
-                        except (ValueError, IndexError):
-                            pass
-
-            # Assign operon IDs from connected components
-            comp_ids = {}
-            op_counter = 1
-            for orf in list(parent.keys()):
-                root = _find(orf)
-                if root not in comp_ids:
-                    comp_ids[root] = f"{stem}_OP{op_counter:04d}"
-                    op_counter += 1
-                orf_to_op[orf] = comp_ids[root]
+            orf_to_op = _parse_uniop_pred(str(pred_file), idx_to_orf)
 
         n_operons = len(set(orf_to_op.values()))
         n_genes   = len(orf_to_op)
         print(f"  [INFO] {stem}: {n_operons} operons, {n_genes} genes assigned")
 
+        # Key by both faa.name and stem for flexible lookup
         genome_operon_map[faa.name] = orf_to_op
         genome_operon_map[stem]     = orf_to_op
 
@@ -880,21 +929,46 @@ def build_prodigal_bakta_map(bakta_gff_dir, prodigal_gff_dir, faa_files,
     return prodigal_to_bakta
 
 
+def _uniop_context(orf, genome, genome_operon_map, op_to_orfs_with_hits):
+    """
+    Classify the UniOP context of an HMM hit:
+
+    - 'in_operon_with_other_hits'  : in a UniOP operon AND at least one other
+                                     ORF in that operon also has an HMM hit
+    - 'singleton_in_operon'        : in a UniOP operon but no other HMM hits
+                                     in the same operon
+    - 'not_in_operon'              : not assigned to any UniOP operon
+    """
+    op_map = genome_operon_map.get(genome, {})
+    op_id  = op_map.get(orf)
+    if op_id is None:
+        return "not_in_operon"
+    other_hits = [o for o in op_to_orfs_with_hits.get(op_id, []) if o != orf]
+    return "in_operon_with_other_hits" if other_hits else "singleton_in_operon"
+
+
 def write_operon_structure(path, final_rows, genome_operon_map,
                            prodigal_to_bakta=None):
     """
     OperonStructure_geneCall.tsv — HMM hits linked to UniOP operon predictions.
-    If prodigal_to_bakta provided, adds bakta_gene_id column.
+
+    uniop_context values:
+      in_operon_with_other_hits  — operon contains ≥1 other HMM-positive ORF
+      singleton_in_operon        — operon contains no other HMM-positive ORFs
+      not_in_operon              — ORF not assigned to any UniOP operon
     """
-    op_to_orfs = defaultdict(list)
+    # Build operon → list of ORFs that have HMM hits
+    op_to_orfs_with_hits = defaultdict(list)
     for r in final_rows:
         op_map = genome_operon_map.get(r["genome"], {})
-        op_id  = op_map.get(r["orf"], f"singleton_{r['genome']}_{r['orf']}")
-        op_to_orfs[op_id].append(r["orf"])
+        op_id  = op_map.get(r["orf"])
+        if op_id:
+            op_to_orfs_with_hits[op_id].append(r["orf"])
 
     use_bakta = bool(prodigal_to_bakta)
     fields = ["operon_id","genome","contig","orf","gene","category",
-              "hmm_stem","bitscore","e_value","unioperon_members"]
+              "hmm_stem","bitscore","e_value",
+              "uniop_context","unioperon_members"]
     if use_bakta:
         fields.insert(fields.index("orf") + 1, "bakta_gene_id")
 
@@ -905,10 +979,12 @@ def write_operon_structure(path, final_rows, genome_operon_map,
         for r in final_rows:
             genome = r["genome"]; orf = r["orf"]
             op_map = genome_operon_map.get(genome, {})
-            op_id  = op_map.get(orf, f"singleton_{genome}_{orf}")
-            members = [o for o in op_to_orfs[op_id] if o != orf]
+            op_id  = op_map.get(orf, "")
+            members = [o for o in op_to_orfs_with_hits.get(op_id, []) if o != orf]
+            ctx = _uniop_context(orf, genome, genome_operon_map,
+                                 op_to_orfs_with_hits)
             row = {
-                "operon_id":         op_id,
+                "operon_id":         op_id if op_id else f"no_operon",
                 "genome":            genome,
                 "contig":            r["contig"],
                 "orf":               orf,
@@ -917,6 +993,7 @@ def write_operon_structure(path, final_rows, genome_operon_map,
                 "hmm_stem":          r["hmm_stem"],
                 "bitscore":          f"{r['bitscore']:.1f}",
                 "e_value":           f"{r['evalue']:.2e}",
+                "uniop_context":     ctx,
                 "unioperon_members": ",".join(members) if members else "",
             }
             if use_bakta:
@@ -1075,18 +1152,24 @@ def write_gene_summary(path,rows):
             prev=r["cluster_id"]
 
 def write_long_format(path,rows):
+    has_uniop = any("uniop_context" in r for r in rows)
     fields=["category","genome","contig","orf","gene","bitscore",
             "bitscore_cutoff","cluster_id","heme_c_motifs","contig_len"]
+    if has_uniop:
+        fields.append("uniop_context")
     with open(path,"w",newline="") as fh:
         w=csv.DictWriter(fh,fieldnames=fields,delimiter="\t",extrasaction="ignore")
         w.writeheader()
         for r in rows:
-            w.writerow({"category":r["cat"],"genome":r["genome"],"contig":r["contig"],
-                        "orf":r.get("bakta_id", r["orf"]),
-                        "gene":r["gene_name"],
-                        "bitscore":f"{r['bitscore']:.1f}","bitscore_cutoff":r["cutoff"],
-                        "cluster_id":r["cluster_id"],"heme_c_motifs":r["heme_motifs"],
-                        "contig_len":r.get("contig_len","")})
+            row = {"category":r["cat"],"genome":r["genome"],"contig":r["contig"],
+                   "orf":r.get("bakta_id", r["orf"]),
+                   "gene":r["gene_name"],
+                   "bitscore":f"{r['bitscore']:.1f}","bitscore_cutoff":r["cutoff"],
+                   "cluster_id":r["cluster_id"],"heme_c_motifs":r["heme_motifs"],
+                   "contig_len":r.get("contig_len","")}
+            if has_uniop:
+                row["uniop_context"] = r.get("uniop_context","not_in_operon")
+            w.writerow(row)
 
 def write_heatmap(path,rows,all_genomes,norm_dict=None):
     all_cats=sorted({r["cat"] for r in rows})
@@ -1367,10 +1450,26 @@ def main():
                 fna_ext    = args.fna_ext if args.fna_dir else "fna",
             )
             if genome_operon_map:
+                # Add uniop_context to every row for use in all output files
+                op_to_hits = defaultdict(list)
+                for r in final_rows:
+                    op_id = genome_operon_map.get(r["genome"], {}).get(r["orf"])
+                    if op_id:
+                        op_to_hits[op_id].append(r["orf"])
+                for r in final_rows:
+                    r["uniop_context"] = _uniop_context(
+                        r["orf"], r["genome"], genome_operon_map, op_to_hits)
+
                 op_path = out_dir / "MetalGenie-Evo-OperonStructure.tsv"
                 print(f"[INFO] Writing {op_path.name}…")
                 write_operon_structure(str(op_path), final_rows, genome_operon_map,
                                        prodigal_to_bakta=prodigal_to_bakta)
+                ctx_counts = defaultdict(int)
+                for r in final_rows:
+                    ctx_counts[r.get("uniop_context","not_in_operon")] += 1
+                print(f"       in_operon_with_other_hits : {ctx_counts['in_operon_with_other_hits']}")
+                print(f"       singleton_in_operon       : {ctx_counts['singleton_in_operon']}")
+                print(f"       not_in_operon             : {ctx_counts['not_in_operon']}")
             else:
                 print("[WARN] UniOP produced no predictions — "
                       "see MetalGenie-Evo-run.log for details.", file=sys.stderr)
