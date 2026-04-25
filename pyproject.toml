@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metalgenie-evo"
-version = "1.0.2"
+version = "1.0.2d"
 description = "HMM-based annotation of iron cycling and metal resistance genes in genomes and metagenomes"
 readme = "README.md"
 license = { file = "LICENSE" }
