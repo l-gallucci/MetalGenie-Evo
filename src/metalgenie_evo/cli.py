@@ -768,6 +768,11 @@ def run_uniop(faa_files, fna_dir, out_dir, uniop_path, fna_ext="fna"):
             if r.returncode != 0:
                 print(f"  [WARN] UniOP failed for {stem}:\n{r.stderr[:400]}",
                       file=sys.stderr)
+                # Also write full stderr to a per-genome log
+                err_log = work_dir / "uniop_error.log"
+                err_log.write_text(
+                    f"Command: {' '.join(cmd)}\n\nSTDOUT:\n{r.stdout}\n\nSTDERR:\n{r.stderr}")
+                print(f"         Full error → {err_log}", file=sys.stderr)
                 continue
 
         # Find the FAA produced by UniOP's Prodigal run
@@ -1007,27 +1012,21 @@ def write_anvio_functions(path, final_rows, prodigal_to_bakta=None):
     Functions table for anvi-import-functions (tab-delimited):
       gene_callers_id    source    accession    function    e_value
 
-    If prodigal_to_bakta is provided (Bakta external gene calls workflow),
-    gene_callers_id contains Bakta gene IDs (e.g. AMXMAG_00053) which map
-    directly to Anvi'o gene_callers_id when the db was built with
-    anvi-gen-contigs-database --external-gene-calls from Bakta output.
-
-    Without Bakta mapping, contains Prodigal ORF names — map to integer IDs
-    via anvi-export-gene-calls before importing.
+    gene_callers_id is taken from r["bakta_id"] if set (populated by the
+    main loop when --bakta_gff_dir is provided), otherwise falls back to
+    r["orf"] (Prodigal name — requires manual mapping before Anvi'o import).
     """
-    use_bakta = bool(prodigal_to_bakta)
     with open(path, "w", newline="") as fh:
         w = csv.writer(fh, delimiter="\t")
         w.writerow(["gene_callers_id", "source", "accession", "function", "e_value"])
         seen = set()
         for r in final_rows:
-            orf = r["orf"]; genome = r["genome"]
-            if orf in seen: continue
+            orf = r["orf"]
+            if orf in seen:
+                continue
             seen.add(orf)
-            if use_bakta:
-                caller = prodigal_to_bakta.get(genome, {}).get(orf, orf)
-            else:
-                caller = orf
+            # Use bakta_id if available (set when --bakta_gff_dir provided)
+            caller = r.get("bakta_id") or orf
             w.writerow([caller, "MetalGenie-Evo", r["hmm_stem"],
                         f"{r['gene_name']} [{r['cat']}]",
                         f"{r['evalue']:.2e}"])
@@ -1384,13 +1383,32 @@ def main():
 
     # Add bakta_id field to every row (falls back to prodigal orf name if no match)
     if prodigal_to_bakta:
+        n_mapped = 0
         for r in final_rows:
             b_map = prodigal_to_bakta.get(r["genome"], {})
-            r["bakta_id"] = b_map.get(r["orf"], r["orf"])
-        print(f"[INFO] Bakta IDs applied to all output files")
+            bakta_id = b_map.get(r["orf"])
+            if bakta_id:
+                r["bakta_id"] = bakta_id
+                n_mapped += 1
+            else:
+                r["bakta_id"] = r["orf"]   # fallback
+        n_total = len(final_rows)
+        print(f"[INFO] Bakta IDs applied: {n_mapped}/{n_total} HMM hits mapped "
+              f"({n_mapped/n_total*100:.1f}%)")
+        if n_mapped == 0:
+            print(f"[WARN] No HMM hits could be mapped to Bakta IDs. "
+                  f"Check that Prodigal GFF basenames match FAA basenames.",
+                  file=sys.stderr)
+            # Debug: show first few orf names and map keys
+            sample_orfs = [r["orf"] for r in final_rows[:3]]
+            sample_genome = final_rows[0]["genome"] if final_rows else "?"
+            sample_map_keys = list(prodigal_to_bakta.get(sample_genome, {}).keys())[:3]
+            print(f"       Sample orf names  : {sample_orfs}", file=sys.stderr)
+            print(f"       Sample map keys   : {sample_map_keys}", file=sys.stderr)
     else:
         for r in final_rows:
-            r["bakta_id"] = r["orf"]   # same as orf when no mapping
+            r["bakta_id"] = r["orf"]
+        print("[INFO] No Bakta mapping — orf column contains Prodigal ORF names")
 
     for path,fn in [(out_dir/"MetalGenie-Evo-summary.csv",write_summary),
                     (out_dir/"MetalGenie-Evo-geneSummary-clusters.csv",write_gene_summary),
