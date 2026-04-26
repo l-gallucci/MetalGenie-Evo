@@ -762,9 +762,9 @@ def run_uniop(faa_files, fna_dir, out_dir, uniop_path, fna_ext="fna"):
                 continue
 
             cmd = ["python3", str(uniop_path),
-                   "-i", str(fna_path),
-                   "-t", str(work_dir)]
-            r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(work_dir))
+                   "-i", str(fna_path.resolve()),   # absolute path
+                   "-t", str(work_dir.resolve())]    # absolute path
+            r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode != 0:
                 print(f"  [WARN] UniOP failed for {stem}:\n{r.stderr[:400]}",
                       file=sys.stderr)
