@@ -846,27 +846,29 @@ def parse_gff_coords(gff_path, source_hint=""):
     return dict(coords)
 
 
-def build_prodigal_bakta_map(bakta_gff_dir, prodigal_gff_dir, faa_files,
+def build_prodigal_bakta_map(bakta_gff_dir, prodigal_faa_dir, faa_files,
                               coord_tol=3):
     """
-    Build a mapping: genome → {prodigal_orf_id → bakta_gene_id}
-    by matching CDS entries on (contig, start, end, strand).
+    Build mapping: genome → {prodigal_orf_id → bakta_locus_tag}
 
-    coord_tol: tolerance in bp for coordinate matching (Bakta and Prodigal
-    sometimes differ by 1-3 bp at gene boundaries due to post-processing).
+    Strategy:
+      1. Parse Bakta GFF3 → {contig: {(start, end, strand): locus_tag}}
+         Locus tags come from ID= field, e.g. ID=CJMEHH_00001
+      2. Parse Prodigal FAA headers → {orf_id: (contig, start, end, strand)}
+         Prodigal headers: >contig_N # start # end # strand # ...
+      3. Join on (contig, start, end, strand) with ±coord_tol bp tolerance
 
-    For each FAA file, looks for:
-      - Bakta GFF3:    bakta_gff_dir / stem.gff3
-      - Prodigal GFF:  prodigal_gff_dir / stem.gff  (or .gff3, .prodigal.gff)
+    This avoids reading the Prodigal GFF (whose ID= field uses internal
+    numbering like ID=1_1, not matching the FAA orf names).
     """
-    prodigal_to_bakta = {}   # genome_name → {prodigal_id → bakta_id}
-    stats = {"matched": 0, "unmatched_prodigal": 0, "unmatched_bakta": 0}
+    prodigal_to_bakta = {}
+    stats = {"matched": 0, "unmatched": 0}
 
-    for faa in faa_files:
-        stem   = faa.stem
-        genome = faa.name
+    for faa_file in faa_files:
+        stem   = faa_file.stem
+        genome = faa_file.name
 
-        # Find Bakta GFF3
+        # ── 1. Build Bakta coordinate index ──────────────────────────────────
         bakta_gff = None
         for ext in (".gff3", ".gff"):
             c = Path(bakta_gff_dir) / (stem + ext)
@@ -876,36 +878,74 @@ def build_prodigal_bakta_map(bakta_gff_dir, prodigal_gff_dir, faa_files,
         if bakta_gff is None:
             continue
 
-        # Find Prodigal GFF
-        prodigal_gff = None
-        for ext in (".gff", ".gff3", ".prodigal.gff"):
-            c = Path(prodigal_gff_dir) / (stem + ext)
-            if c.exists():
-                prodigal_gff = c
-                break
-        if prodigal_gff is None:
+        # (contig, start, end, strand) → locus_tag
+        bakta_index = defaultdict(dict)
+        with open(bakta_gff) as fh:
+            for line in fh:
+                if line.startswith("#"):
+                    continue
+                parts = line.rstrip().split("\t")
+                if len(parts) < 9 or parts[2] != "CDS":
+                    continue
+                contig = parts[0]
+                try:
+                    start = int(parts[3])
+                    end   = int(parts[4])
+                except ValueError:
+                    continue
+                strand = parts[6]
+                # Extract locus tag from attributes — prefer locus_tag= over ID=
+                locus_tag = None
+                id_val    = None
+                for attr in parts[8].split(";"):
+                    attr = attr.strip()
+                    if attr.startswith("locus_tag="):
+                        locus_tag = attr[10:].strip()
+                        break        # locus_tag= is authoritative
+                    if attr.startswith("ID=") and id_val is None:
+                        id_val = attr[3:].strip()
+                if locus_tag is None:
+                    locus_tag = id_val  # fallback to ID=
+                if locus_tag:
+                    bakta_index[contig][(start, end, strand)] = locus_tag
+
+        # ── 2. Parse Prodigal FAA headers ─────────────────────────────────────
+        # Prodigal header: >contig_N # start # end # strand_int # ...
+        # strand_int: 1 = forward (+), -1 = reverse (-)
+        prodigal_faa = Path(prodigal_faa_dir) / f"{stem}.faa"
+        if not prodigal_faa.exists():
             continue
 
-        bakta_coords    = parse_gff_coords(str(bakta_gff),    "bakta")
-        prodigal_coords = parse_gff_coords(str(prodigal_gff), "prodigal")
-
-        # Build index: contig → {(start, end, strand) → bakta_id}
-        bakta_index = defaultdict(dict)
-        for contig, entries in bakta_coords.items():
-            for start, end, strand, gene_id in entries:
-                bakta_index[contig][(start, end, strand)] = gene_id
-
-        # Match Prodigal ORFs to Bakta genes
         orf_map = {}
-        for contig, entries in prodigal_coords.items():
-            b_idx = bakta_index.get(contig, {})
-            for start, end, strand, prod_id in entries:
+        with open(prodigal_faa) as fh:
+            for line in fh:
+                if not line.startswith(">"):
+                    continue
+                # >orf_id # start # end # strand # ...
+                parts = line[1:].rstrip().split(" # ")
+                if len(parts) < 4:
+                    continue
+                orf_id = parts[0].strip()
+                try:
+                    start      = int(parts[1].strip())
+                    end        = int(parts[2].strip())
+                    strand_int = int(parts[3].strip())
+                except ValueError:
+                    continue
+                strand = "+" if strand_int == 1 else "-"
+
+                # Derive contig from orf_id: strip trailing _N
+                contig_parts = orf_id.rsplit("_", 1)
+                contig = contig_parts[0] if len(contig_parts) == 2 else orf_id
+
                 # Exact match first
-                key = (start, end, strand)
+                b_idx = bakta_index.get(contig, {})
+                key   = (start, end, strand)
                 if key in b_idx:
-                    orf_map[prod_id] = b_idx[key]
+                    orf_map[orf_id] = b_idx[key]
                     stats["matched"] += 1
                     continue
+
                 # Fuzzy match within coord_tol bp
                 found = None
                 for (bs, be, bst), bid in b_idx.items():
@@ -915,22 +955,21 @@ def build_prodigal_bakta_map(bakta_gff_dir, prodigal_gff_dir, faa_files,
                         found = bid
                         break
                 if found:
-                    orf_map[prod_id] = found
+                    orf_map[orf_id] = found
                     stats["matched"] += 1
                 else:
-                    stats["unmatched_prodigal"] += 1
+                    stats["unmatched"] += 1
 
         prodigal_to_bakta[genome] = orf_map
 
-    total = stats["matched"] + stats["unmatched_prodigal"]
+    total = stats["matched"] + stats["unmatched"]
     if total > 0:
         pct = stats["matched"] / total * 100
         print(f"[INFO] Prodigal↔Bakta mapping: "
               f"{stats['matched']}/{total} ORFs matched ({pct:.1f}%)")
-        if stats["unmatched_prodigal"] > 0:
-            print(f"       {stats['unmatched_prodigal']} Prodigal ORFs had no "
-                  f"matching Bakta gene (will show ORF name in Bakta column)")
-
+        if stats["unmatched"] > 0:
+            print(f"       {stats['unmatched']} Prodigal ORFs had no Bakta match "
+                  f"(will keep Prodigal name)")
     return prodigal_to_bakta
 
 
@@ -1368,9 +1407,13 @@ def main():
     if args.bakta_gff_dir:
         if gff_dir_path:
             print("[INFO] Building Prodigal↔Bakta coordinate map…")
+            prodigal_faa_dir = gff_dir_path.parent / "faa" if gff_dir_path else None
+            if prodigal_faa_dir is None or not prodigal_faa_dir.exists():
+                # Fallback: look for faa next to gff
+                prodigal_faa_dir = out_dir / "_prodigal" / "faa"
             prodigal_to_bakta = build_prodigal_bakta_map(
                 args.bakta_gff_dir,
-                str(gff_dir_path),
+                str(prodigal_faa_dir),
                 faa_files)
             if not prodigal_to_bakta:
                 print("[WARN] Prodigal↔Bakta mapping returned empty. "
