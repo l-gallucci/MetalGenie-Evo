@@ -377,20 +377,18 @@ _IRON_TRANS_CATS   = {"iron_aquisition-iron_transport","iron_aquisition-heme_oxy
 _IRON_ACQ_ALL      = _SIDERO_TRANS_CATS | _SIDERO_SYNTH_CATS | _IRON_TRANS_CATS
 
 
-def filter_cluster_fegenie(cluster_rows, report_all_pats, all_results=False):
+def filter_cluster_fegenie(cluster_rows, report_all_pats, all_results=False,
+                           catalog_mode=False):
     """
     Exact port of FeGenie's operon context filtering logic.
 
-    FeGenie dispatches clusters to one rule handler based on which special
-    genes are present.  The key behavioral difference from a simple threshold:
-
-      - `break`-style rules  → drop the ENTIRE cluster when threshold not met
-      - `pass`-style rules   → drop only the FAILING ORFs, keep the rest
-
-    iron_transport/siderophore rules use the pass pattern, meaning that a gene
-    in one of those categories is silently skipped if its cluster doesn't have
-    enough co-occurring genes of the same category — but OTHER genes in the
-    cluster (e.g. iron_reduction genes) are kept.
+    catalog_mode=True: bypass co-occurrence count rules (FLEET ≥5, MAM ≥5,
+    siderophore ≥2/3, iron_transport ≥2) but keep:
+      - report_all bypass (metal_resistance-*, iron_storage)
+      - Mtr/Mto disambiguation (category assignment, not count-based)
+      - Cyc1/Cyc2 second-pass filters (handled separately in second_pass())
+    This is appropriate for deduplicated gene catalogs where genomic context
+    is unavailable by definition.
     """
     if all_results:
         return cluster_rows
@@ -400,6 +398,13 @@ def filter_cluster_fegenie(cluster_rows, report_all_pats, all_results=False):
 
     # report_all bypass (metal_resistance-*, iron_storage …)
     if all(_cm(c, report_all_pats) for c in cats):
+        return cluster_rows
+
+    # catalog_mode: skip all count-based co-occurrence rules
+    # but still apply Mtr/Mto disambiguation
+    if catalog_mode:
+        if stems & _MTR_GENES:
+            return _mtr(cluster_rows)
         return cluster_rows
 
     # ── Helper counts ─────────────────────────────────────────────────────────
@@ -582,12 +587,15 @@ def count_heme(seq):
     return sum(len(re.findall(p,seq)) for p in
                [r"C(..)CH",r"C(...)CH",r"C(....)CH",r"C(.{14})CH",r"C(.{15})CH"])
 
-def second_pass(cluster_rows,g2c,seq_dict,all_results=False):
+def second_pass(cluster_rows,g2c,seq_dict,all_results=False,catalog_mode=False):
     if all_results: return cluster_rows
     stems=[r["hmm_stem"] for r in cluster_rows]; kept=[]
     for r in cluster_rows:
         stem=r["hmm_stem"]; cat=r["cat"]
         if stem=="Cyc1":
+            # In catalog_mode: no co-occurrence context → skip Cyc1 entirely
+            if catalog_mode:
+                continue
             if len({h for h in set(stems) if g2c.get(h,"") in FE_REDOX})>=2: kept.append(r)
             continue
         if re.match(r"Cyc2",stem):
@@ -595,7 +603,8 @@ def second_pass(cluster_rows,g2c,seq_dict,all_results=False):
             if len(seq)>=365 and count_heme(seq)>0: kept.append(r)
             continue
         if cat=="iron_gene_regulation":
-            if any("regulation" in g2c.get(h,"") for h in stems): kept.append(r)
+            if catalog_mode or any("regulation" in g2c.get(h,"") for h in stems):
+                kept.append(r)
             continue
         kept.append(r)
     return kept
@@ -1272,7 +1281,14 @@ def main():
                    help="Halve operon min_genes for contigs < --relaxed_threshold")
     p.add_argument("--relaxed_threshold",type=int,default=10000,
                    help="Contig length (bp) threshold for relaxed operon rules")
-    p.add_argument("--all_results",action="store_true")
+    p.add_argument("--all_results",action="store_true",
+                   help="Report all HMM hits; skip all operon-context filters")
+    p.add_argument("--catalog_mode",action="store_true",
+                   help="Gene catalog mode: bypass co-occurrence count rules "
+                        "(FLEET ≥5, siderophore ≥2/3, iron_transport ≥2) but "
+                        "keep bitscore cutoffs, Cyc2, and Mtr/Mto disambiguation. "
+                        "Use when input is a deduplicated gene catalog where "
+                        "genomic context is unavailable.")
     p.add_argument("--threads",type=int,default=4)
     p.add_argument("--hmm_threads",type=int,default=1)
     p.add_argument("--norm",action="store_true",help="Normalise gene-count heatmap")
@@ -1396,8 +1412,10 @@ def main():
                                               relaxed_threshold=rel_thr)
             else:
                 filtered=filter_cluster_fegenie(cluster_rows,report_all_pats,
-                                                 args.all_results)
-            filtered=second_pass(filtered,h2c,seq_dict,args.all_results)
+                                                 args.all_results,
+                                                 catalog_mode=args.catalog_mode)
+            filtered=second_pass(filtered,h2c,seq_dict,args.all_results,
+                                 catalog_mode=args.catalog_mode)
             for r in filtered:
                 r["gene_name"]=gene_map.get(r["hmm_stem"],r["hmm_stem"])
                 r["sequence"]=seq_dict.get(genome,{}).get(r["orf"],"")
