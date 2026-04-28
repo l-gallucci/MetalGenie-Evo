@@ -847,19 +847,20 @@ def parse_gff_coords(gff_path, source_hint=""):
 
 
 def build_prodigal_bakta_map(bakta_gff_dir, prodigal_faa_dir, faa_files,
-                              coord_tol=3):
+                              coord_tol=30):
     """
     Build mapping: genome → {prodigal_orf_id → bakta_locus_tag}
 
-    Strategy:
-      1. Parse Bakta GFF3 → {contig: {(start, end, strand): locus_tag}}
-         Locus tags come from ID= field, e.g. ID=CJMEHH_00001
-      2. Parse Prodigal FAA headers → {orf_id: (contig, start, end, strand)}
-         Prodigal headers: >contig_N # start # end # strand # ...
-      3. Join on (contig, start, end, strand) with ±coord_tol bp tolerance
+    Matches Prodigal ORFs to Bakta genes by (contig, start, end, strand).
+    coord_tol=30bp covers alternative start codon choices between Prodigal
+    and Pyrodigal (Bakta), where the end coordinate is usually identical
+    but the start may differ by up to ~30bp.
 
-    This avoids reading the Prodigal GFF (whose ID= field uses internal
-    numbering like ID=1_1, not matching the FAA orf names).
+    Matching priority:
+      1. Exact (start, end, strand)
+      2. Fuzzy: same strand, |start_diff| <= coord_tol, |end_diff| <= coord_tol
+      3. End-anchor: same strand, same end, |start_diff| <= coord_tol
+         (most common case: alternative start codon, same stop codon)
     """
     prodigal_to_bakta = {}
     stats = {"matched": 0, "unmatched": 0}
@@ -938,7 +939,7 @@ def build_prodigal_bakta_map(bakta_gff_dir, prodigal_faa_dir, faa_files,
                 contig_parts = orf_id.rsplit("_", 1)
                 contig = contig_parts[0] if len(contig_parts) == 2 else orf_id
 
-                # Exact match first
+                # 1. Exact match
                 b_idx = bakta_index.get(contig, {})
                 key   = (start, end, strand)
                 if key in b_idx:
@@ -946,7 +947,7 @@ def build_prodigal_bakta_map(bakta_gff_dir, prodigal_faa_dir, faa_files,
                     stats["matched"] += 1
                     continue
 
-                # Fuzzy match within coord_tol bp
+                # 2. Fuzzy match within coord_tol on both ends
                 found = None
                 for (bs, be, bst), bid in b_idx.items():
                     if (bst == strand and
@@ -954,6 +955,14 @@ def build_prodigal_bakta_map(bakta_gff_dir, prodigal_faa_dir, faa_files,
                             abs(be - end)   <= coord_tol):
                         found = bid
                         break
+
+                # 3. End-anchor match: same stop, different start (alt start codon)
+                if not found:
+                    for (bs, be, bst), bid in b_idx.items():
+                        if bst == strand and be == end and abs(bs - start) <= coord_tol:
+                            found = bid
+                            break
+
                 if found:
                     orf_map[orf_id] = found
                     stats["matched"] += 1
