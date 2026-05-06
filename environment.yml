@@ -7,7 +7,7 @@ dependencies:
   # ── Core pipeline ───────────────────────────────────────────────────────────
   - python>=3.8
   - hmmer>=3.3
-  - prodigal>=2.6.3
+  - pyrodigal>=3.0
   - pip
 
   # ── Coverage heatmap (optional, only needed for --bam) ─────────────────────
